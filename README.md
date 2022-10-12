@@ -54,7 +54,7 @@ The [examples](examples/) directory includes:
 
 ## FAQ
  Q - Can this library read configuration information from .env files?<br>
-A - The cfgbuild package does not know how to read .env packages, but can easily be paired with [godotenv](https://github.com/joho/godotenv).  The examples show two different ways to use godotenv. 
+A - The cfgbuild package does not know how to read .env packages, but can easily be paired with [godotenv](https://github.com/joho/godotenv).  The examples show two different ways to use godotenv.  Note that godetenv (created by John Barton) uses an [MIT License](https://github.com/joho/godotenv/blob/main/LICENCE).
 
 Q - How does cfgbuild compare with [Viper](https://github.com/spf13/viper)?
 <br>
