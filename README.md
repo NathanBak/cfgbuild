@@ -51,6 +51,7 @@ The [examples](examples/) directory includes:
 - [simple](examples/simple/) which shows a simple use case of loading a config from environment variables
 - [fromdotenv](examples/fromdotenv/) which shows how to load a config from a `.env` file
 - [bootstrap](examples/bootstrap/) which shows how to wrap a Builder into a Config constructor
+- [enumparse](examples/enumparse/) which shows how a config field can be an enum
 
 ## FAQ
  Q - Can this library read configuration information from .env files?<br>
@@ -59,3 +60,7 @@ A - The cfgbuild package does not know how to read .env packages, but can easily
 Q - How does cfgbuild compare with [Viper](https://github.com/spf13/viper)?
 <br>
 A - Viper has a lot more whistles and bells and is overall more flexible and more powerful, but is also more complicated and pulls in numerous dependencies.  If you're looking for something to implement a complex CLI, then Viper is your friend.  But if you have a microservice that will be running in a container and needs an easy way to get configuration information, it's worth considering cfgbuild.
+
+Q - Does cfgbuild support enums?
+<br>
+A - A config can have an enum field if the enum implements the [TextUnmarshaler interface](https://pkg.go.dev/encoding#TextUnmarshaler).  See the [Color](examples/enumparse/color.go) enum for an example.
