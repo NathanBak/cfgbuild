@@ -15,4 +15,4 @@ jobs:
         go-version: 1.19
 
     - name: Test
-      run: go test ./... -v -short -cover -vrace -timeout 1m -count 1
+      run: go test ./... -v -short -cover -race -timeout 1m -count 1
