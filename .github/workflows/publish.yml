@@ -33,7 +33,7 @@ jobs:
       - name: Release notes
         id: releasenotes
         run: |
-          prev={{ steps.previoustag.outputs.tag }}
+          prev=${{ steps.previoustag.outputs.tag }}
           notes="$(git log --pretty="### %s%n%b%n%h - %an(%ae) - %ad%n%n" $prev..HEAD)"
           printf "%s" -- "::set-output name=release_notes::$notes)
 
@@ -42,8 +42,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.newversion.outputs.v_patch }}
-          release_name: ${{ steps.newversion.outputs.v_patch }}
-          body_path: ${{ steps.releasenotes.outputs.release_notes }}
+          tag_name: ${{ steps.semvers.outputs.v_patch }}
+          release_name: ${{ steps.semvers.outputs.v_patch }}
+          body_path: ${{ steps.semvers.outputs.release_notes }}
           draft: false
           prerelease: false
