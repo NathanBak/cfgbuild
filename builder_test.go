@@ -9,6 +9,11 @@ import (
 )
 
 func TestConfigBuilderDefaults(t *testing.T) {
+	os.Unsetenv("MY_INT")
+	os.Unsetenv("MY_DURATION")
+	os.Unsetenv("MY_TIME")
+	os.Unsetenv("MY_BYTES")
+
 	b := Builder[*TestConfig]{}
 
 	cfg, err := b.Build()
@@ -26,6 +31,7 @@ func TestConfigBuilderDefaults(t *testing.T) {
 func TestConfigBuilderEnvVars(t *testing.T) {
 
 	os.Setenv("MY_INT", "42")
+	os.Setenv("MY_UINT", "142")
 	os.Setenv("MY_FLOAT", "2.718")
 	os.Setenv("MY_TIME", "2022-10-10T21:01:16+00:00")
 	os.Setenv("MY_DURATION", "3s")
@@ -41,6 +47,7 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 	assert.NotNil(t, cfg)
 
 	assert.Equal(t, 42, cfg.MyInt)
+	assert.Equal(t, uint(142), cfg.MyUInt)
 	assert.EqualValues(t, 2.718, cfg.MyFloat)
 	assert.Equal(t, 16, cfg.MyTime.Second())
 	assert.Equal(t, 3*time.Second, cfg.MyDuration)
@@ -51,6 +58,7 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 
 type TestConfig struct {
 	MyInt      int           `envvar:"MY_INT"`
+	MyUInt     uint          `envvar:"MY_UINT"`
 	MyFloat    float32       `envvar:"MY_FLOAT"`
 	MyDuration time.Duration `envvar:"MY_DURATION"`
 	MyTime     time.Time     `envvar:"MY_TIME"`

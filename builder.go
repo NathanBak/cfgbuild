@@ -155,6 +155,130 @@ func setFieldValue(v reflect.Value, s string) error {
 			}
 			v.SetFloat(f)
 
+		case reflect.Pointer:
+			switch v.Type().String() {
+			case "*int":
+				i64, err := strconv.ParseInt(s, 10, 64)
+				if err != nil {
+					return err
+				}
+				i := int(i64)
+				v.Set(reflect.ValueOf(&i))
+
+			case "*int8":
+				i64, err := strconv.ParseInt(s, 10, 8)
+				if err != nil {
+					return err
+				}
+				i8 := int8(i64)
+				v.Set(reflect.ValueOf(&i8))
+
+			case "*int16":
+				i64, err := strconv.ParseInt(s, 10, 16)
+				if err != nil {
+					return err
+				}
+				i16 := int16(i64)
+				v.Set(reflect.ValueOf(&i16))
+
+			case "*int32":
+				i64, err := strconv.ParseInt(s, 10, 32)
+				if err != nil {
+					return err
+				}
+				i32 := int32(i64)
+				v.Set(reflect.ValueOf(&i32))
+
+			case "*int64":
+				i64, err := strconv.ParseInt(s, 10, 64)
+				if err != nil {
+					return err
+				}
+				v.Set(reflect.ValueOf(&i64))
+
+			case "*uint":
+				ui64, err := strconv.ParseUint(s, 10, 64)
+				if err != nil {
+					return err
+				}
+				ui := uint(ui64)
+				v.Set(reflect.ValueOf(&ui))
+
+			case "*uint8":
+				ui64, err := strconv.ParseUint(s, 10, 8)
+				if err != nil {
+					return err
+				}
+				ui8 := uint8(ui64)
+				v.Set(reflect.ValueOf(&ui8))
+
+			case "*uint16":
+				ui64, err := strconv.ParseUint(s, 10, 16)
+				if err != nil {
+					return err
+				}
+				ui16 := uint16(ui64)
+				v.Set(reflect.ValueOf(&ui16))
+
+			case "*uint32":
+				ui64, err := strconv.ParseUint(s, 10, 32)
+				if err != nil {
+					return err
+				}
+				ui32 := uint32(ui64)
+				v.Set(reflect.ValueOf(&ui32))
+
+			case "*uint64":
+				ui64, err := strconv.ParseUint(s, 10, 64)
+				if err != nil {
+					return err
+				}
+				v.Set(reflect.ValueOf(&ui64))
+
+			case "*float32":
+				f64, err := strconv.ParseFloat(s, 32)
+				if err != nil {
+					return err
+				}
+				f32 := float32(f64)
+				v.Set(reflect.ValueOf(&f32))
+
+			case "*float64":
+				f64, err := strconv.ParseFloat(s, 64)
+				if err != nil {
+					return err
+				}
+				v.Set(reflect.ValueOf(&f64))
+
+			case "*time.Duration":
+				i, err := strconv.ParseInt(s, 10, 64)
+				if err != nil {
+					d, err := time.ParseDuration(s)
+					if err != nil {
+						return err
+					}
+					i = int64(d)
+				}
+				d := time.Duration(i)
+				v.Set(reflect.ValueOf(&d))
+
+			case "*string":
+				str := s
+				v.Set(reflect.ValueOf(&str))
+
+			case "*bool":
+				var b bool
+				switch strings.ToUpper(s) {
+				case "TRUE":
+					b = true
+				case "FALSE":
+					b = false
+				default:
+					return fmt.Errorf("string %q is not a valid boolean value", s)
+				}
+				v.Set(reflect.ValueOf(&b))
+			}
+
 		case reflect.String:
 			v.SetString(s)
 
