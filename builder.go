@@ -45,7 +45,7 @@ func (b *Builder[T]) readEnvVars() error {
 		if envVarVal, ok := os.LookupEnv(key); ok {
 			err = setFieldValue(value.Field(i), envVarVal)
 			if err != nil {
-				return err
+				return fmt.Errorf("error reading %q (%s)", key, err.Error())
 			}
 		}
 	}
