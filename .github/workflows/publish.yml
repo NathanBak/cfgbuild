@@ -9,21 +9,24 @@ jobs:
     name: Create Release
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0 # Required due to the way Git works, without it this action won't be able to find any or the correct tags
 
       - name: Setup git
         run: |
           git config user.email "nathan@yellowslicker.com"
           git config user.name "Auto Nathan"
 
-      - name: Previous tag
+      - name: 'Get Previous tag'
         id: previoustag
-        uses: WyriHaximus/github-action-get-previous-tag@v1
+        uses: "WyriHaximus/github-action-get-previous-tag@v1"
+        # with:
+        #   fallback: 0.1.1 # Optional fallback tag to use when no tag can be found
 
-      - name: Minor bump
-        id: newversion
-        uses: WyriHaximus/github-action-next-semvers@v1
+      - name: 'Get next minor version'
+        id: semvers
+        uses: "WyriHaximus/github-action-next-semvers@v1"
         with:
           version: ${{ steps.previoustag.outputs.tag }}
 
@@ -39,8 +42,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.newversion.outputs.v_minor }}
-          release_name: ${{ steps.newversion.outputs.v_minor }}
+          tag_name: ${{ steps.newversion.outputs.v_patch }}
+          release_name: ${{ steps.newversion.outputs.v_patch }}
           body_path: ${{ steps.releasenotes.outputs.release_notes }}
           draft: false
           prerelease: false
