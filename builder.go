@@ -1,6 +1,7 @@
 package cfgbuild
 
 import (
+	"encoding"
 	"errors"
 	"fmt"
 	"os"
@@ -75,14 +76,14 @@ func setFieldValue(v reflect.Value, s string) error {
 
 	switch v.Type() {
 
-	case reflect.TypeOf(time.Now()):
+	case reflect.TypeOf(time.Now()): // Time
 		t, err := time.Parse(time.RFC3339, s)
 		if err != nil {
 			return err
 		}
 		v.Set(reflect.ValueOf(t))
 
-	case reflect.TypeOf(time.Duration(3)):
+	case reflect.TypeOf(time.Duration(3)): // Duration
 		i, err := strconv.ParseInt(s, 10, 64)
 		if err != nil {
 			d, err := time.ParseDuration(s)
@@ -97,6 +98,21 @@ func setFieldValue(v reflect.Value, s string) error {
 		v.Set(reflect.ValueOf([]uint8(s)))
 
 	default:
+
+		if v.CanInterface() {
+			vi := v.Interface()
+			unmarshaller, ok := vi.(encoding.TextUnmarshaler)
+			if !ok {
+				if !ok {
+					unmarshaller, ok = v.Addr().Interface().(encoding.TextUnmarshaler)
+				}
+			}
+
+			if ok {
+				return unmarshaller.UnmarshalText([]byte(s))
+			}
+		}
+
 		switch v.Kind() {
 
 		case reflect.Bool:
