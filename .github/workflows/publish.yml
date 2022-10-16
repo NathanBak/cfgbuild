@@ -11,25 +11,36 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v2
+
       - name: Setup git
         run: |
-          git config user.email "pusher-ci@pusher.com"
-          git config user.name "Pusher CI"
-      - name: Prepare description
+          git config user.email "nathan@yellowslicker.com"
+          git config user.name "Auto Nathan"
+
+      - name: Previous tag
+        id: previoustag
+        uses: WyriHaximus/github-action-get-previous-tag@v1
+
+      - name: Minor bump
+        id: newversion
+        uses: WyriHaximus/github-action-next-semvers@v1
+        with:
+          version: ${{ steps.previoustag.outputs.tag }}
+
+      - name: Release notes
+        id: releasenotes
         run: |
-          csplit -s CHANGELOG.md "/##/" {1}
-          cat xx01 > CHANGELOG.tmp
-      - name: Prepare tag
-        run: |
-          export TAG=$(head -1 CHANGELOG.tmp | cut -d' ' -f2)
-          echo "TAG=$TAG" >> $GITHUB_ENV
+          prev={{ steps.previoustag.outpus.tag }}
+          notes="$(git log --pretty="### %s%n%b%n%h - %an(%ae) - %ad%n%n" $prev..HEAD)"
+          printf "%s" -- "::set-output name=release_notes::$notes)
+
       - name: Create Release
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ env.TAG }}
-          release_name: ${{ env.TAG }}
-          body_path: CHANGELOG.tmp
+          tag_name: ${{ steps.newversion.outputs.v_minor }}
+          release_name: ${{ steps.newversion.outputs.v_minor }}
+          body_path: ${{ steps.releasenotes.outputs.release_notes }}
           draft: false
           prerelease: false
