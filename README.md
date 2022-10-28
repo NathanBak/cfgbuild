@@ -2,7 +2,7 @@
 A Lightweight Golang Library for loading app configs
 
 ## Introduction
-The purpose of cfgbuild is to provide an easy, lightweight package for loading application configuration settings.  It is able to build a struct and initialize the fields with associated environment variable values (see examples for loading from a .env file).  The main package does not have any external dependencies (but the tests and examples do reference external projects).  This library is published under the [BSD 2-Clause License](LICENSE) which provides a lot of flexiblity for usage.
+The purpose of cfgbuild is to provide an easy, lightweight package for loading application configuration settings.  It is able to build a struct and initialize the fields with associated environment variable values (see examples for loading from a .env file).  The main package does not have any external dependencies (but the tests and examples do require external projects).  This library is published under the [BSD 2-Clause License](LICENSE) which provides a lot of flexiblity for usage.
 
 ## Example Config
 
@@ -12,20 +12,19 @@ A Config is just a struct with fields for different application settings.  Field
 // Config struct defines fields for application settings.
 // It can be called "Config" or anything else.
 type Config struct {
+	// Including the BaseConfig adds the default implementations
+	// of the required cfgbuild.Config interface functions.
+	cfgbuild.BaseConfig        
     // Field names can be anything and many different types
     // are supported.  The cfgBuild.Builder will use the 
     // envvar tag to know which environment variable to use.
-	MyInt    int     `envvar:"MY_INT"`
+	// If the tag also contains the "required" flag, then 
+	// calls to Build() will fail if the value has not been
+	// set.
+	MyInt    int     `envvar:"MY_INT,required"`
 	MyFloat  float64 `envvar:"MY_FLOAT"`
 	MyString string  `envvar:"MY_STRING"`
 	MyBool   bool    `envvar:"MY_BOOL"`
-}
-
-// Init is used to set default values.  This function should
-// only be called by the cfgBuild.Builder.
-func (cfg *Config) Init() error {
-	cfg.MyInt = 1234
-	return nil
 }
 ```
 
@@ -64,3 +63,11 @@ A - Viper has a lot more whistles and bells and is overall more flexible and mor
 Q - Does cfgbuild support enums?
 <br>
 A - A config can have an enum field if the enum implements the [TextUnmarshaler interface](https://pkg.go.dev/encoding#TextUnmarshaler).  See the [Color](examples/enumparse/color.go) enum for an example.
+
+Q - What if my config requires special initialization?
+<br>
+A - Any special initialization logic can be performed in the CfgBuildInit() function.  This can include things such as specifying default values.
+
+Q - What if I want to perform special validation on my config?
+<br>
+A - Any special validation logic can be performed in the CfgBuildValidate() function.  This can include things such as verifying that set values are within certain ranges.
