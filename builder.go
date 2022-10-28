@@ -319,9 +319,8 @@ func (b *Builder[T]) checkRequired() error {
 		structField := typ.Field(i)
 		tag := structField.Tag.Get("envvar")
 		split := strings.Split(tag, ",")
-		key := "-"
 		if len(split) > 0 {
-			key = split[0]
+			key := split[0]
 			if key == "-" {
 				continue
 			}
