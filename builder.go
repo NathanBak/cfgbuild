@@ -19,8 +19,14 @@ type Builder[T Config] struct {
 	setProps     map[string]bool
 }
 
-func (b *Builder[T]) Build() (T, error) {
-	var err error
+func (b *Builder[T]) Build() (cfg T, err error) {
+
+	// Don't Panic!
+	defer func() {
+		if panicErr := recover(); panicErr != nil {
+			err = fmt.Errorf("builder panic:  %v", panicErr)
+		}
+	}()
 
 	err = b.instantiateCfg()
 	if err != nil {
