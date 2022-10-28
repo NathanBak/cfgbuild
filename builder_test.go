@@ -10,6 +10,7 @@ import (
 
 func TestConfigBuilderDefaults(t *testing.T) {
 	os.Unsetenv("MY_INT")
+	os.Setenv("MY_UINT", "142") // must set required val
 	os.Unsetenv("MY_DURATION")
 	os.Unsetenv("MY_TIME")
 	os.Unsetenv("MY_BYTES")
@@ -58,7 +59,7 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 
 type TestConfig struct {
 	MyInt      int           `envvar:"MY_INT"`
-	MyUInt     uint          `envvar:"MY_UINT"`
+	MyUInt     uint          `envvar:"MY_UINT,required"`
 	MyFloat    float32       `envvar:"MY_FLOAT"`
 	MyDuration time.Duration `envvar:"MY_DURATION"`
 	MyTime     time.Time     `envvar:"MY_TIME"`

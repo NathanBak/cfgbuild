@@ -16,6 +16,7 @@ import (
 type Builder[T Config] struct {
 	cfg          T
 	instantiated bool
+	setProps     map[string]bool
 }
 
 func (b *Builder[T]) Build() (T, error) {
@@ -26,7 +27,15 @@ func (b *Builder[T]) Build() (T, error) {
 		return b.cfg, err
 	}
 
+	b.setProps = make(map[string]bool)
+
 	err = b.readEnvVars()
+	if err != nil {
+		return b.cfg, err
+	}
+
+	err = b.checkRequired()
+
 	return b.cfg, err
 }
 
@@ -41,12 +50,22 @@ func (b *Builder[T]) readEnvVars() error {
 
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
-		key := structField.Tag.Get("envvar")
+		tag := structField.Tag.Get("envvar")
+		split := strings.Split(tag, ",")
+		key := "-"
+		if len(split) > 0 {
+			key = split[0]
+		}
+		if key == "-" {
+			continue
+		}
+
 		if envVarVal, ok := os.LookupEnv(key); ok {
 			err = setFieldValue(value.Field(i), envVarVal)
 			if err != nil {
 				return fmt.Errorf("error reading %q (%s)", key, err.Error())
 			}
+			b.setProps[key] = true
 		}
 	}
 
@@ -288,4 +307,35 @@ func setFieldValue(v reflect.Value, s string) error {
 		}
 	}
 	return nil
+}
+
+// checkRequired looks at each field and ensures that each field with a "required" tag was
+// previously set from an env var.  An error is returned if any required fields were not set.
+func (b *Builder[T]) checkRequired() error {
+	typ := reflect.TypeOf(b.cfg).Elem()
+	missingRequired := []string{}
+
+	for i := 0; i < typ.NumField(); i++ {
+		structField := typ.Field(i)
+		tag := structField.Tag.Get("envvar")
+		split := strings.Split(tag, ",")
+		if len(split) > 0 {
+			key := split[0]
+			if key == "-" {
+				continue
+			}
+			if strings.Contains(tag, ",required") && !b.setProps[key] {
+				missingRequired = append(missingRequired, key)
+			}
+		}
+	}
+
+	switch len(missingRequired) {
+	case 0:
+		return nil
+	case 1:
+		return fmt.Errorf("missing required var %q", missingRequired[0])
+	default:
+		return fmt.Errorf("missing required vars: %s", strings.Join(missingRequired, ","))
+	}
 }
