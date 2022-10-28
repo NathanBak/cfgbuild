@@ -30,3 +30,18 @@ func TestConfigBuilderErrors(t *testing.T) {
 		assert.Equal(t, tst.expected, err.Error())
 	}
 }
+
+func TestConfigBuilderHandlePanic(t *testing.T) {
+
+	os.Setenv("MY_UINT", "42")
+
+	b := Builder[*TestConfig]{}
+
+	// put Builder into a bad internal state to force a panic
+	b.instantiated = true
+
+	_, err := b.Build()
+	assert.Error(t, err)
+	assert.Equal(t, "builder panic:  reflect: call of reflect.Value.Field on zero Value", err.Error())
+
+}
