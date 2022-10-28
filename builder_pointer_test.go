@@ -57,6 +57,7 @@ func TestPointerConfigBuilderEnvVars(t *testing.T) {
 }
 
 type TestPointerConfig struct {
+	BaseConfig
 	MyInt   *int   `envvar:"MY_INT"`
 	MyInt8  *int8  `envvar:"MY_INT8"`
 	MyInt16 *int16 `envvar:"MY_INT16"`
@@ -75,8 +76,4 @@ type TestPointerConfig struct {
 	MyDuration *time.Duration `envvar:"MY_DURATION"`
 	MyString   *string        `envvar:"MY_STRING"`
 	MyBool     *bool          `envvar:"MY_BOOL"`
-}
-
-func (cfg *TestPointerConfig) Init() error {
-	return nil
 }

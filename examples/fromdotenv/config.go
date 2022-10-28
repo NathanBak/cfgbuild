@@ -1,6 +1,9 @@
 package main
 
-import "time"
+import (
+	"fmt"
+	"time"
+)
 
 // Config is an example struct usable by the cfgbuild package.
 type Config struct {
@@ -13,9 +16,17 @@ type Config struct {
 	MyBool     bool          `json:"myBool" envvar:"MY_BOOL"`
 }
 
-// Init sets some default values in the config.
-func (cfg *Config) Init() error {
+// CfgBuildInit sets some default values in the config.
+func (cfg *Config) CfgBuildInit() error {
 	cfg.MyInt = 8081
 	cfg.MyTime = time.Date(2000, time.March, 17, 0, 13, 37, 0, time.UTC)
+	return nil
+}
+
+// CfgBuildValidate can check that the certain set values are valid.
+func (cfg *Config) CfgBuildValidate() error {
+	if cfg.MyInt != 42 {
+		return fmt.Errorf("MY_INT value %d is not the answer to everything", cfg.MyInt)
+	}
 	return nil
 }

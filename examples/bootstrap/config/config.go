@@ -1,6 +1,7 @@
 package config
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/NathanBak/cfgbuild"
@@ -30,11 +31,19 @@ func New() (*Config, error) {
 	return builder.Build()
 }
 
-// Init sets some default values in the config.
-func (cfg *Config) Init() error {
+// CfgBuildInit sets some default values in the config.
+func (cfg *Config) CfgBuildInit() error {
 	// only set defaults once--this prevents users from overwriting set values
 	cfg.once.Do(func() {
 		cfg.MyInt = 8081
 	})
+	return nil
+}
+
+// CfgBuildValidate can check that the certain set values are valid.
+func (cfg *Config) CfgBuildValidate() error {
+	if cfg.MyInt < 8080 || cfg.MyInt > 9999 {
+		return fmt.Errorf("MY_INT value %d is out of range", cfg.MyInt)
+	}
 	return nil
 }

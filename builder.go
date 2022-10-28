@@ -41,6 +41,11 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	}
 
 	err = b.checkRequired()
+	if err != nil {
+		return b.cfg, err
+	}
+
+	err = b.cfg.CfgBuildValidate()
 
 	return b.cfg, err
 }
@@ -84,7 +89,7 @@ func (b *Builder[T]) instantiateCfg() error {
 		val := reflect.New(typ.Elem()).Interface().(T)
 		b.cfg = val
 		b.instantiated = true
-		return b.cfg.Init()
+		return b.cfg.CfgBuildInit()
 	}
 	return nil
 }

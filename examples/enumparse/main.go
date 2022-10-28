@@ -9,14 +9,10 @@ import (
 )
 
 type config struct {
-	MyString string `envvar:"MY_STRING"`
+	cfgbuild.BaseConfig        // adds default implementations of required functions
+	MyString            string `envvar:"MY_STRING"`
 	// Color implements the TextUnmarshaler interface
 	MyColor Color `envvar:"MY_COLOR"`
-}
-
-// Init doesn't do anything but allows config to implement the Config interface
-func (cfg *config) Init() error {
-	return nil
 }
 
 // This main function shows how to use a Builder to create a config from env vars.

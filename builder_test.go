@@ -58,6 +58,7 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 }
 
 type TestConfig struct {
+	BaseConfig
 	MyInt      int           `envvar:"MY_INT"`
 	MyUInt     uint          `envvar:"MY_UINT,required"`
 	MyFloat    float32       `envvar:"MY_FLOAT"`
@@ -68,7 +69,7 @@ type TestConfig struct {
 	MyBool     bool          `envvar:"MY_BOOL"`
 }
 
-func (cfg *TestConfig) Init() error {
+func (cfg *TestConfig) CfgBuildInit() error {
 
 	cfg.MyInt = 8081
 	cfg.MyDuration = 3 * time.Second
