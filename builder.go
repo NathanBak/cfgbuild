@@ -33,6 +33,11 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 		return b.cfg, err
 	}
 
+	err = b.setDefaults()
+	if err != nil {
+		return b.cfg, err
+	}
+
 	b.setProps = make(map[string]bool)
 
 	err = b.readEnvVars()
@@ -349,4 +354,34 @@ func (b *Builder[T]) checkRequired() error {
 	default:
 		return fmt.Errorf("missing required vars: %s", strings.Join(missingRequired, ","))
 	}
+}
+
+func (b *Builder[T]) setDefaults() error {
+
+	typ := reflect.TypeOf(b.cfg).Elem()
+	value := reflect.ValueOf(b.cfg).Elem()
+
+	for i := 0; i < typ.NumField(); i++ {
+		structField := typ.Field(i)
+		tag := structField.Tag.Get("envvar")
+		split := strings.Split(tag, ",")
+
+		if len(split) < 2 || split[0] == "-" {
+			continue
+		}
+
+		for j := 1; j < len(split); j++ {
+			if strings.HasPrefix(split[j], "default=") {
+				defaultVal := strings.TrimPrefix(split[j], "default=")
+				err := setFieldValue(value.Field(i), defaultVal)
+				if err != nil {
+					key := split[0]
+					return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
+				}
+				break
+			}
+		}
+	}
+
+	return nil
 }
