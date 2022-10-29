@@ -20,11 +20,12 @@ type Config struct {
     // envvar tag to know which environment variable to use.
 	// If the tag also contains the "required" flag, then 
 	// calls to Build() will fail if the value has not been
-	// set.
+	// set.  If the tag contains the "default" flag then the
+	// provided value will be applied as the default value.
 	MyInt    int     `envvar:"MY_INT,required"`
 	MyFloat  float64 `envvar:"MY_FLOAT"`
 	MyString string  `envvar:"MY_STRING"`
-	MyBool   bool    `envvar:"MY_BOOL"`
+	MyBool   bool    `envvar:"MY_BOOL,default=TRUE"`
 }
 ```
 

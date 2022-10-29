@@ -43,5 +43,16 @@ func TestConfigBuilderHandlePanic(t *testing.T) {
 	_, err := b.Build()
 	assert.Error(t, err)
 	assert.Equal(t, "builder panic:  reflect: call of reflect.Value.Field on zero Value", err.Error())
+}
 
+func TestConfigBuilderInvalidDefault(t *testing.T) {
+	type badIntDefault struct {
+		BaseConfig
+		MyInt int `envvar:"MY_INT,default=abc"`
+	}
+
+	b := Builder[*badIntDefault]{}
+	_, err := b.Build()
+	assert.Error(t, err)
+	assert.Equal(t, `error setting default value for "MY_INT" (strconv.ParseInt: parsing "abc": invalid syntax)`, err.Error())
 }

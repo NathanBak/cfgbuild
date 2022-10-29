@@ -14,6 +14,7 @@ func TestConfigBuilderDefaults(t *testing.T) {
 	os.Unsetenv("MY_DURATION")
 	os.Unsetenv("MY_TIME")
 	os.Unsetenv("MY_BYTES")
+	os.Unsetenv("MY_DEFAULT_INT")
 
 	b := Builder[*TestConfig]{}
 
@@ -26,7 +27,7 @@ func TestConfigBuilderDefaults(t *testing.T) {
 	assert.Equal(t, time.Second*3, cfg.MyDuration)
 	assert.Equal(t, 17, cfg.MyTime.Day())
 	assert.Nil(t, cfg.MyBytes)
-
+	assert.Equal(t, 1234, cfg.MyDefaultInt)
 }
 
 func TestConfigBuilderEnvVars(t *testing.T) {
@@ -59,22 +60,21 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 
 type TestConfig struct {
 	BaseConfig
-	MyInt      int           `envvar:"MY_INT"`
-	MyUInt     uint          `envvar:"MY_UINT,required"`
-	MyFloat    float32       `envvar:"MY_FLOAT"`
-	MyDuration time.Duration `envvar:"MY_DURATION"`
-	MyTime     time.Time     `envvar:"MY_TIME"`
-	MyBytes    []byte        `envvar:"MY_BYTES"`
-	MyString   string        `envvar:"MY_STRING"`
-	MyBool     bool          `envvar:"MY_BOOL"`
+	MyInt        int           `envvar:"MY_INT"`
+	MyUInt       uint          `envvar:"MY_UINT,required"`
+	MyFloat      float32       `envvar:"MY_FLOAT"`
+	MyDuration   time.Duration `envvar:"MY_DURATION"`
+	MyTime       time.Time     `envvar:"MY_TIME"`
+	MyBytes      []byte        `envvar:"MY_BYTES"`
+	MyString     string        `envvar:"MY_STRING"`
+	MyBool       bool          `envvar:"MY_BOOL"`
+	MyDefaultInt int           `envvar:"MY_DEFAULT_INT,default=1234"`
 }
 
 func (cfg *TestConfig) CfgBuildInit() error {
-
 	cfg.MyInt = 8081
 	cfg.MyDuration = 3 * time.Second
 	cfg.MyTime = time.Date(2000, time.March, 17, 0, 13, 37, 0, time.UTC)
-
 	return nil
 }
 

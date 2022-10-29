@@ -42,8 +42,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: ${{ steps.semvers.outputs.v_minor }}
-          release_name: ${{ steps.semvers.outputs.v_minor }}
+          tag_name: ${{ steps.semvers.outputs.v_patch }}
+          release_name: ${{ steps.semvers.outputs.v_patch }}
           body_path: ${{ steps.semvers.outputs.release_notes }}
           draft: false
           prerelease: false
