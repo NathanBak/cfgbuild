@@ -13,10 +13,18 @@ import (
 
 // A Builder is able to create and initialize a Config.  After creating a Builder, run the Build()
 // method.
-type Builder[T Config] struct {
+type Builder[T interface{}] struct {
 	cfg          T
 	instantiated bool
 	setProps     map[string]bool
+}
+
+type initInterface interface {
+	CfgBuildInit() error
+}
+
+type validateInterface interface {
+	CfgBuildValidate() error
 }
 
 func (b *Builder[T]) Build() (cfg T, err error) {
@@ -50,8 +58,10 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 		return b.cfg, err
 	}
 
-	err = b.cfg.CfgBuildValidate()
-
+	validator, ok := any(b.cfg).(validateInterface)
+	if ok {
+		err = validator.CfgBuildValidate()
+	}
 	return b.cfg, err
 }
 
@@ -88,15 +98,21 @@ func (b *Builder[T]) readEnvVars() error {
 	return nil
 }
 
-func (b *Builder[T]) instantiateCfg() error {
+func (b *Builder[T]) instantiateCfg() (err error) {
 	if !b.instantiated {
 		typ := reflect.TypeOf(b.cfg)
 		val := reflect.New(typ.Elem()).Interface().(T)
 		b.cfg = val
 		b.instantiated = true
-		return b.cfg.CfgBuildInit()
+
+		initter, ok := any(b.cfg).(initInterface)
+		if ok {
+			err = initter.CfgBuildInit()
+		}
+
+		return
 	}
-	return nil
+	return
 }
 
 func setFieldValue(v reflect.Value, s string) error {

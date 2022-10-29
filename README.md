@@ -12,9 +12,6 @@ A Config is just a struct with fields for different application settings.  Field
 // Config struct defines fields for application settings.
 // It can be called "Config" or anything else.
 type Config struct {
-	// Including the BaseConfig adds the default implementations
-	// of the required cfgbuild.Config interface functions.
-	cfgbuild.BaseConfig        
     // Field names can be anything and many different types
     // are supported.  The cfgBuild.Builder will use the 
     // envvar tag to know which environment variable to use.
@@ -30,7 +27,7 @@ type Config struct {
 ```
 
 ## Usage
-Building a config is pretty simple.  Basically, you just need to create a new builder (providing the Config type) and then run the `builder.Build()` function.  Here's some example code:
+Building a config is pretty simple.  Basically, you just need to create a new builder (providing the Config type) and then run the `Builder.Build()` function.  Here's some example code:
 ```golang
 package main
 
@@ -45,6 +42,38 @@ func main() {
 }
 
 ```
+
+## Tags
+
+### Name
+Tags typically follow the format of 
+```golang
+MyString string `envvar:"ENV_VAR_NAME"`
+```
+where `envvar` is a keyword and "ENV_VAR_NAME" is the name of the environment variable containing the value.
+
+### Required
+If a value is required (must be set), the `required` flag can be added.
+```golang
+MyString string `envvar:"ENV_VAR_NAME,required"`
+```
+When the required flag is included in the `envvar` tag, the cfgbuild.Builder.Build() function will return an error if the value is not set.
+
+### Default
+If there is a default value, it can be set using the `default` flag.
+```golang
+MyNumber int `envvar:"ENV_VAR_NAME,default=1234"`
+```
+If the environment variable is not set then the default value specified after the equals sign will be used instead.  There is no compile time validation of the default value so if an integer has something like `default=abc` specified then the cfgbuild.Builder.Build() function will always fail.
+
+## Functions
+Additional flexibility and customization can be achieved by adding implementations of specific functions to the Config struct.
+
+### CfgBuildInit()
+The CfgBuildInit() function can be used to perform any special initialization logic.  This can include things such as specifying complex default values or initializing special fields.  The function should have a signature like `func (cfg *Config) CfgBuildInit() error`.  It will be invoked during the Build() right after the new instance is created.
+
+### CfgBuildValidate()
+The CfgBuildValidate() function can be used to perform special validation the config.  This can include things such as verifying that set values are within certain ranges.  The function should have a signature like `func (cfg *Config) CfgBuildInit() error`.  It will be invoked as the final step during the Build().
 
 ## Examples
 The [examples](examples/) directory includes:
@@ -65,10 +94,3 @@ Q - Does cfgbuild support enums?
 <br>
 A - A config can have an enum field if the enum implements the [TextUnmarshaler interface](https://pkg.go.dev/encoding#TextUnmarshaler).  See the [Color](examples/enumparse/color.go) enum for an example.
 
-Q - What if my config requires special initialization?
-<br>
-A - Any special initialization logic can be performed in the CfgBuildInit() function.  This can include things such as specifying default values.
-
-Q - What if I want to perform special validation on my config?
-<br>
-A - Any special validation logic can be performed in the CfgBuildValidate() function.  This can include things such as verifying that set values are within certain ranges.

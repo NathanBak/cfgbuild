@@ -57,7 +57,6 @@ func TestPointerConfigBuilderEnvVars(t *testing.T) {
 }
 
 type TestPointerConfig struct {
-	BaseConfig
 	MyInt   *int   `envvar:"MY_INT"`
 	MyInt8  *int8  `envvar:"MY_INT8"`
 	MyInt16 *int16 `envvar:"MY_INT16"`

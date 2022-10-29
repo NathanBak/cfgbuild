@@ -59,7 +59,6 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 }
 
 type TestConfig struct {
-	BaseConfig
 	MyInt        int           `envvar:"MY_INT"`
 	MyUInt       uint          `envvar:"MY_UINT,required"`
 	MyFloat      float32       `envvar:"MY_FLOAT"`

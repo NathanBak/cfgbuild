@@ -9,8 +9,7 @@ import (
 )
 
 type config struct {
-	cfgbuild.BaseConfig        // adds default implementations of required functions
-	MyString            string `envvar:"MY_STRING"`
+	MyString string `envvar:"MY_STRING"`
 	// Color implements the TextUnmarshaler interface
 	MyColor Color `envvar:"MY_COLOR"`
 }
