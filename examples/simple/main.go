@@ -9,11 +9,10 @@ import (
 )
 
 type config struct {
-	cfgbuild.BaseConfig         // adds default implementations of required functions
-	MyInt               int     `envvar:"MY_INT"`
-	MyFloat             float64 `envvar:"MY_FLOAT"`
-	MyString            string  `envvar:"MY_STRING"`
-	MyBool              bool    `envvar:"MY_BOOL"`
+	MyInt    int     `envvar:"MY_INT"`
+	MyFloat  float64 `envvar:"MY_FLOAT"`
+	MyString string  `envvar:"MY_STRING"`
+	MyBool   bool    `envvar:"MY_BOOL"`
 }
 
 // This main function shows how to use a Builder to create a config from env vars.

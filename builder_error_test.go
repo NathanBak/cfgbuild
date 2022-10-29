@@ -1,6 +1,7 @@
 package cfgbuild
 
 import (
+	"errors"
 	"os"
 	"testing"
 
@@ -47,7 +48,6 @@ func TestConfigBuilderHandlePanic(t *testing.T) {
 
 func TestConfigBuilderInvalidDefault(t *testing.T) {
 	type badIntDefault struct {
-		BaseConfig
 		MyInt int `envvar:"MY_INT,default=abc"`
 	}
 
@@ -55,4 +55,29 @@ func TestConfigBuilderInvalidDefault(t *testing.T) {
 	_, err := b.Build()
 	assert.Error(t, err)
 	assert.Equal(t, `error setting default value for "MY_INT" (strconv.ParseInt: parsing "abc": invalid syntax)`, err.Error())
+}
+
+type AnswerConfig struct {
+	Answer int `envvar:"answer,default=54"`
+}
+
+func (cfg *AnswerConfig) CfgBuildValidate() error {
+	if cfg.Answer != 42 {
+		return errors.New("what is six times nine?")
+	}
+	return nil
+}
+
+func TestConfigBuilderValidateFail(t *testing.T) {
+	b := Builder[*AnswerConfig]{}
+	_, err := b.Build()
+	assert.Error(t, err)
+	assert.Equal(t, `what is six times nine?`, err.Error())
+}
+
+func TestConfigBuildNonStructType(t *testing.T) {
+	b := Builder[*int]{}
+	_, err := b.Build()
+	assert.Error(t, err)
+	assert.Equal(t, `builder panic:  reflect: NumField of non-struct type int`, err.Error())
 }

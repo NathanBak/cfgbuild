@@ -31,7 +31,7 @@ func New() (*Config, error) {
 	return builder.Build()
 }
 
-// CfgBuildInit sets some default values in the config.
+// CfgBuildInit sets some default values in the config.  It is called by cfgbuild.Builder.Build().
 func (cfg *Config) CfgBuildInit() error {
 	// only set defaults once--this prevents users from overwriting set values
 	cfg.once.Do(func() {
@@ -40,7 +40,8 @@ func (cfg *Config) CfgBuildInit() error {
 	return nil
 }
 
-// CfgBuildValidate can check that the certain set values are valid.
+// CfgBuildValidate can check that the certain set values are valid.  It is called by
+// cfgbuild.Builder.Build().
 func (cfg *Config) CfgBuildValidate() error {
 	if cfg.MyInt < 8080 || cfg.MyInt > 9999 {
 		return fmt.Errorf("MY_INT value %d is out of range", cfg.MyInt)
