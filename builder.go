@@ -11,6 +11,13 @@ import (
 	"time"
 )
 
+// The Build function accepts an existing Config and will perform the initialization steps.
+func Build(cfg interface{}) error {
+	b := Builder[interface{}]{cfg: cfg, instantiated: true}
+	_, err := b.Build()
+	return err
+}
+
 // A Builder is able to create and initialize a Config.  After creating a Builder, run the Build()
 // method.
 type Builder[T interface{}] struct {
@@ -39,6 +46,14 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	err = b.instantiateCfg()
 	if err != nil {
 		return b.cfg, err
+	}
+
+	initter, ok := any(b.cfg).(initInterface)
+	if ok {
+		err = initter.CfgBuildInit()
+		if err != nil {
+			return b.cfg, err
+		}
 	}
 
 	err = b.setDefaults()
@@ -98,21 +113,14 @@ func (b *Builder[T]) readEnvVars() error {
 	return nil
 }
 
-func (b *Builder[T]) instantiateCfg() (err error) {
+func (b *Builder[T]) instantiateCfg() error {
 	if !b.instantiated {
 		typ := reflect.TypeOf(b.cfg)
 		val := reflect.New(typ.Elem()).Interface().(T)
 		b.cfg = val
 		b.instantiated = true
-
-		initter, ok := any(b.cfg).(initInterface)
-		if ok {
-			err = initter.CfgBuildInit()
-		}
-
-		return
 	}
-	return
+	return nil
 }
 
 func setFieldValue(v reflect.Value, s string) error {

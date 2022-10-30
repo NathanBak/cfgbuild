@@ -43,7 +43,8 @@ func TestConfigBuilderHandlePanic(t *testing.T) {
 
 	_, err := b.Build()
 	assert.Error(t, err)
-	assert.Equal(t, "builder panic:  reflect: call of reflect.Value.Field on zero Value", err.Error())
+	expected := "builder panic:  runtime error: invalid memory address or nil pointer dereference"
+	assert.Equal(t, expected, err.Error())
 }
 
 func TestConfigBuilderInvalidDefault(t *testing.T) {

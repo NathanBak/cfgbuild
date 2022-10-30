@@ -56,24 +56,35 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 	assert.Equal(t, []byte("secretPassword"), cfg.MyBytes)
 	assert.Equal(t, "Nobody expects the Spanish Inquisition!", cfg.MyString)
 	assert.True(t, cfg.MyBool)
+
+	assert.True(t, cfg.InitCalled)
+	assert.True(t, cfg.ValidateCalled)
 }
 
 type TestConfig struct {
-	MyInt        int           `envvar:"MY_INT"`
-	MyUInt       uint          `envvar:"MY_UINT,required"`
-	MyFloat      float32       `envvar:"MY_FLOAT"`
-	MyDuration   time.Duration `envvar:"MY_DURATION"`
-	MyTime       time.Time     `envvar:"MY_TIME"`
-	MyBytes      []byte        `envvar:"MY_BYTES"`
-	MyString     string        `envvar:"MY_STRING"`
-	MyBool       bool          `envvar:"MY_BOOL"`
-	MyDefaultInt int           `envvar:"MY_DEFAULT_INT,default=1234"`
+	MyInt          int           `envvar:"MY_INT"`
+	MyUInt         uint          `envvar:"MY_UINT,required"`
+	MyFloat        float32       `envvar:"MY_FLOAT"`
+	MyDuration     time.Duration `envvar:"MY_DURATION"`
+	MyTime         time.Time     `envvar:"MY_TIME"`
+	MyBytes        []byte        `envvar:"MY_BYTES"`
+	MyString       string        `envvar:"MY_STRING"`
+	MyBool         bool          `envvar:"MY_BOOL"`
+	MyDefaultInt   int           `envvar:"MY_DEFAULT_INT,default=1234"`
+	InitCalled     bool
+	ValidateCalled bool
 }
 
 func (cfg *TestConfig) CfgBuildInit() error {
 	cfg.MyInt = 8081
 	cfg.MyDuration = 3 * time.Second
 	cfg.MyTime = time.Date(2000, time.March, 17, 0, 13, 37, 0, time.UTC)
+	cfg.InitCalled = true
+	return nil
+}
+
+func (cfg *TestConfig) CfgBuildValidate() error {
+	cfg.ValidateCalled = true
 	return nil
 }
 
