@@ -11,6 +11,12 @@ import (
 	"time"
 )
 
+// NewConfig will create and initialize a Config of the provided type.
+func NewConfig[T any]() (T, error) {
+	b := Builder[T]{}
+	return b.Build()
+}
+
 // The Build function accepts an existing Config and will perform the initialization steps.
 func Build(cfg interface{}) error {
 	b := Builder[interface{}]{cfg: cfg, instantiated: true}
