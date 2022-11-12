@@ -1,8 +1,15 @@
 name: Publish
 
 on:
-  push:
-    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      release_type:
+        type: choice
+        description: Type of release
+        options:
+          - patch
+          - minor
+          - major
 
 jobs:
   create-release:
@@ -37,13 +44,39 @@ jobs:
           notes="$(git log --pretty='### %s%n%b%n%h - %an(%ae) - %ad%n%n' $prev..HEAD)"
           printf "%s" -- "::set-output name=release_notes::$notes"
 
-      - name: Create Release
+      - name: Create Patch Release
+        if: ${{ github.event.inputs.release_type == 'patch'}}
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           tag_name: ${{ steps.semvers.outputs.v_patch }}
           release_name: ${{ steps.semvers.outputs.v_patch }}
-          body_path: ${{ steps.semvers.outputs.release_notes }}
+          body: ${{ steps.releasenotes.outputs.release_notes }}
           draft: false
           prerelease: false
+
+     - name: Create Minor Release
+        if: ${{ github.event.inputs.release_type == 'mino'}}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.semvers.outputs.v_minor }}
+          release_name: ${{ steps.semvers.outputs.v_minor }}
+          body: ${{ steps.releasenotes.outputs.release_notes }}
+          draft: false
+          prerelease: false
+
+     - name: Create Major Release
+        if: ${{ github.event.inputs.release_type == 'major'}}
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ steps.semvers.outputs.v_major }}
+          release_name: ${{ steps.semvers.outputs.v_major }}
+          body: ${{ steps.releasenotes.outputs.release_notes }}
+          draft: false
+          prerelease: false
+
