@@ -23,10 +23,8 @@ func main() {
 	os.Setenv("MY_STRING", "I have a cunning plan")
 	os.Setenv("MY_BOOL", "true")
 
-	// create a new config Builder
-	builder := cfgbuild.Builder[*config]{}
-	// build the new config setting the values from the env vars
-	cfg, err := builder.Build()
+	// create a new config and initialize from the env vars
+	cfg, err := cfgbuild.NewConfig[*config]()
 	if err != nil {
 		log.Fatal(err)
 	}
