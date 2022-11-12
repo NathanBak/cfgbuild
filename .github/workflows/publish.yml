@@ -44,7 +44,7 @@ jobs:
         run: |
           prev=${{ steps.previoustag.outputs.tag }}
           notes="$(git log --pretty='### %s%n%b%n%h - %an(%ae) - %ad%n%n' $prev..HEAD)"
-          printf "%s" -- "::set-output name=release_notes::$notes"
+          echo "release_notes=$notes" >> $GITHUB_OUTPUT
 
       - name: Create Patch Release
         if: ${{ github.event.inputs.release_type == 'patch'}}
