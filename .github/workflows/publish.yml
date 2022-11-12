@@ -1,4 +1,6 @@
-name: Publish
+name: Publish Release
+
+concurrency: release
 
 on:
   workflow_dispatch:
@@ -56,7 +58,7 @@ jobs:
           draft: false
           prerelease: false
 
-     - name: Create Minor Release
+      - name: Create Minor Release
         if: ${{ github.event.inputs.release_type == 'mino'}}
         uses: actions/create-release@v1
         env:
@@ -68,7 +70,7 @@ jobs:
           draft: false
           prerelease: false
 
-     - name: Create Major Release
+      - name: Create Major Release
         if: ${{ github.event.inputs.release_type == 'major'}}
         uses: actions/create-release@v1
         env:
