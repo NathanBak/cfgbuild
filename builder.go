@@ -162,6 +162,10 @@ func setFieldValue(v reflect.Value, s string) error {
 	case reflect.TypeOf([]uint8{}): // we assume this to actually be []byte
 		v.Set(reflect.ValueOf([]uint8(s)))
 
+	case reflect.TypeOf([]string{}):
+		vals := split(s)
+		v.Set(reflect.ValueOf(vals))
+
 	default:
 
 		if v.CanInterface() {
@@ -414,4 +418,13 @@ func (b *Builder[T]) setDefaults() error {
 	}
 
 	return nil
+}
+
+func split(s string) []string {
+	vals := strings.Split(s, ",")
+	out := []string{}
+	for _, v := range vals {
+		out = append(out, strings.TrimSpace(v))
+	}
+	return out
 }
