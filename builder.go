@@ -4,6 +4,7 @@ import (
 	"encoding"
 	"errors"
 	"fmt"
+	"math/bits"
 	"os"
 	"reflect"
 	"strconv"
@@ -27,9 +28,11 @@ func Build(cfg interface{}) error {
 // A Builder is able to create and initialize a Config.  After creating a Builder, run the Build()
 // method.
 type Builder[T interface{}] struct {
-	cfg          T
-	instantiated bool
-	setProps     map[string]bool
+	cfg           T
+	instantiated  bool
+	setProps      map[string]bool
+	Uint8Lists    bool
+	ListSeparator string
 }
 
 type initInterface interface {
@@ -108,7 +111,7 @@ func (b *Builder[T]) readEnvVars() error {
 		}
 
 		if envVarVal, ok := os.LookupEnv(key); ok {
-			err = setFieldValue(value.Field(i), envVarVal)
+			err = b.setFieldValue(value.Field(i), envVarVal)
 			if err != nil {
 				return fmt.Errorf("error reading %q (%s)", key, err.Error())
 			}
@@ -129,7 +132,7 @@ func (b *Builder[T]) instantiateCfg() error {
 	return nil
 }
 
-func setFieldValue(v reflect.Value, s string) error {
+func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
 
 	if !v.CanAddr() {
 		return errors.New("unable to obtain field address")
@@ -138,6 +141,8 @@ func setFieldValue(v reflect.Value, s string) error {
 	if !v.CanSet() {
 		return errors.New("unable to set field value")
 	}
+
+	sep := b.ListSeparator
 
 	switch v.Type() {
 
@@ -159,11 +164,83 @@ func setFieldValue(v reflect.Value, s string) error {
 		}
 		v.SetInt(int64(i))
 
-	case reflect.TypeOf([]uint8{}): // we assume this to actually be []byte
-		v.Set(reflect.ValueOf([]uint8(s)))
-
 	case reflect.TypeOf([]string{}):
-		vals := split(s)
+		vals := split(s, sep)
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]int{}):
+		vals, err := parseIntegers[int](s, sep, true, bits.UintSize)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]int8{}):
+		vals, err := parseIntegers[int8](s, sep, true, 8)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]int16{}):
+		vals, err := parseIntegers[int16](s, sep, true, 16)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]int32{}):
+		vals, err := parseIntegers[int32](s, sep, true, 32)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]int64{}):
+		vals, err := parseIntegers[int64](s, sep, true, 64)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]uint{}):
+		vals, err := parseIntegers[uint](s, sep, false, bits.UintSize)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]uint8{}):
+		if b.Uint8Lists {
+			vals, err := parseIntegers[uint8](s, sep, false, 8)
+			if err != nil {
+				return err
+			}
+			v.Set(reflect.ValueOf(vals))
+		} else {
+			// be default we assume []uint8 to actually be []byte
+			v.Set(reflect.ValueOf([]uint8(s)))
+		}
+
+	case reflect.TypeOf([]uint16{}):
+		vals, err := parseIntegers[uint16](s, sep, false, 16)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]uint32{}):
+		vals, err := parseIntegers[uint32](s, sep, false, 32)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]uint64{}):
+		vals, err := parseIntegers[uint64](s, sep, false, 64)
+		if err != nil {
+			return err
+		}
 		v.Set(reflect.ValueOf(vals))
 
 	default:
@@ -407,7 +484,7 @@ func (b *Builder[T]) setDefaults() error {
 		for j := 1; j < len(split); j++ {
 			if strings.HasPrefix(split[j], "default=") {
 				defaultVal := strings.TrimPrefix(split[j], "default=")
-				err := setFieldValue(value.Field(i), defaultVal)
+				err := b.setFieldValue(value.Field(i), defaultVal)
 				if err != nil {
 					key := split[0]
 					return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
@@ -420,11 +497,39 @@ func (b *Builder[T]) setDefaults() error {
 	return nil
 }
 
-func split(s string) []string {
-	vals := strings.Split(s, ",")
+func split(s, sep string) []string {
+	if sep == "" {
+		sep = ","
+	}
+	vals := strings.Split(s, sep)
 	out := []string{}
 	for _, v := range vals {
 		out = append(out, strings.TrimSpace(v))
 	}
 	return out
+}
+
+type integers interface {
+	int | int8 | int16 | int32 | int64 | uint | uint8 | uint16 | uint32 | uint64
+}
+
+func parseIntegers[T integers](s, sep string, signed bool, bitsize int) ([]T, error) {
+	vals := split(s, sep)
+	integers := []T{}
+	for _, v := range vals {
+		if signed {
+			i64, err := strconv.ParseInt(v, 10, bitsize)
+			if err != nil {
+				return integers, err
+			}
+			integers = append(integers, T(i64))
+		} else {
+			u64, err := strconv.ParseUint(v, 10, bitsize)
+			if err != nil {
+				return integers, err
+			}
+			integers = append(integers, T(u64))
+		}
+	}
+	return integers, nil
 }
