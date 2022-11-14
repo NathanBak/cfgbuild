@@ -18,8 +18,8 @@ func NewConfig[T any]() (T, error) {
 	return b.Build()
 }
 
-// The Build function accepts an existing Config and will perform the initialization steps.
-func Build(cfg interface{}) error {
+// The InitConfig function accepts an existing Config and will perform the initialization steps.
+func InitConfig(cfg interface{}) error {
 	b := Builder[interface{}]{cfg: cfg, instantiated: true}
 	_, err := b.Build()
 	return err

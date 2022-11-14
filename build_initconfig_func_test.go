@@ -21,7 +21,7 @@ func TestConfigBuildFuncEnvVars(t *testing.T) {
 
 	cfg := &TestConfig{}
 
-	err := Build(cfg)
+	err := InitConfig(cfg)
 	assert.NoError(t, err)
 
 	assert.NotNil(t, cfg)

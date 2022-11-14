@@ -27,14 +27,54 @@ type Config struct {
 ```
 
 ## Usage
-Building a config is pretty simple.  Basically, you just need to create a new builder (providing the Config type) and then run the `Builder.Build()` function.  Here's some example code:
+
+There are three primary ways to use the cfgbuild library to build configs:
+
+### NewConfig function
+
+The NewConfig function creates, initializes, and returns a config with the type being specified when calling the function.  Here's a simple example:
 ```golang
 package main
 
 import "github.com/NathanBak/cfgbuild"
 
 func main() {
-	builder := cfgbuild.Builder[*Config]{}
+	cfg, err := cfgbuild.New[*Config]()
+	// ...
+    // Handle errors, use cfg, ... , profit
+    //...
+}
+
+```
+
+### InitConfig function
+
+If a config was created but needs to be initialized, the InitConfig function can be used.  It accepts the config as an argument and will initialize the various values.  Here's an example:
+```golang
+package main
+
+import "github.com/NathanBak/cfgbuild"
+
+func main() {
+	cfg := &Config{}
+	err := InitConfig(cfg)
+	// ...
+    // Handle errors, use cfg, ... , profit
+    //...
+}
+
+```
+
+### Builder
+
+To use the builder first create a new builder (providing the Config type) and then run the `Builder.Build()` function.  Using a builder allows additional configuration such as specifying a non-default list separator.  Here's some example code:
+```golang
+package main
+
+import "github.com/NathanBak/cfgbuild"
+
+func main() {
+	builder := cfgbuild.Builder[*Config]{ListSeparator: ";"}
 	cfg, err := builder.Build()
 	// ...
     // Handle errors, use cfg, ... , profit
@@ -42,6 +82,9 @@ func main() {
 }
 
 ```
+
+
+
 
 ## Tags
 
