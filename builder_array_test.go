@@ -205,6 +205,29 @@ func TestIntegerArraysWithSemiSeparator(t *testing.T) {
 	assert.EqualValues(t, 19, cfg.MyUInt64s[4])
 }
 
+func TestFloatArrays(t *testing.T) {
+	os.Clearenv()
+	os.Setenv("MY_FLOAT32S", "3.14,1.4142,0.7071,1.732")
+	os.Setenv("MY_FLOAT64S", "1.4142,0.7071,1.732,2.71828182846")
+
+	b := Builder[*TestArrayConfig]{}
+	cfg, err := b.Build()
+	assert.NoError(t, err)
+	assert.NotNil(t, cfg)
+
+	assert.Equal(t, 4, len(cfg.MyFloat32s))
+	assert.EqualValues(t, 3.14, cfg.MyFloat32s[0])
+	assert.EqualValues(t, 1.4142, cfg.MyFloat32s[1])
+	assert.EqualValues(t, 0.7071, cfg.MyFloat32s[2])
+	assert.EqualValues(t, 1.732, cfg.MyFloat32s[3])
+
+	assert.Equal(t, 4, len(cfg.MyFloat64s))
+	assert.EqualValues(t, 1.4142, cfg.MyFloat64s[0])
+	assert.EqualValues(t, 0.7071, cfg.MyFloat64s[1])
+	assert.EqualValues(t, 1.732, cfg.MyFloat64s[2])
+	assert.EqualValues(t, 2.71828182846, cfg.MyFloat64s[3])
+}
+
 type TestArrayConfig struct {
 	MyStrings []string `envvar:"MY_STRINGS"`
 
@@ -219,4 +242,7 @@ type TestArrayConfig struct {
 	MyUInt16s []uint16 `envvar:"MY_UINT16S"`
 	MyUInt32s []uint32 `envvar:"MY_UINT32S"`
 	MyUInt64s []uint64 `envvar:"MY_UINT64S"`
+
+	MyFloat32s []float32 `envvar:"MY_FLOAT32S"`
+	MyFloat64s []float64 `envvar:"MY_FLOAT64S"`
 }
