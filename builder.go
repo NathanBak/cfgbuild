@@ -243,6 +243,20 @@ func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
 		}
 		v.Set(reflect.ValueOf(vals))
 
+	case reflect.TypeOf([]float32{}):
+		vals, err := parseFloats[float32](s, sep, 32)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
+	case reflect.TypeOf([]float64{}):
+		vals, err := parseFloats[float64](s, sep, 64)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(vals))
+
 	default:
 
 		if v.CanInterface() {
@@ -532,4 +546,23 @@ func parseIntegers[T integers](s, sep string, signed bool, bitsize int) ([]T, er
 		}
 	}
 	return integers, nil
+}
+
+type floats interface {
+	float32 | float64
+}
+
+func parseFloats[T floats](s, sep string, bitsize int) ([]T, error) {
+	vals := split(s, sep)
+	floats := []T{}
+	for _, v := range vals {
+
+		f64, err := strconv.ParseFloat(v, bitsize)
+		if err != nil {
+			return floats, err
+		}
+		floats = append(floats, T(f64))
+
+	}
+	return floats, nil
 }
