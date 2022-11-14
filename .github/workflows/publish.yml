@@ -58,7 +58,7 @@ jobs:
           prerelease: false
 
       - name: Create Minor Release
-        if: ${{ github.event.inputs.release_type == 'mino'}}
+        if: ${{ github.event.inputs.release_type == 'minor'}}
         uses: actions/create-release@v1
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
