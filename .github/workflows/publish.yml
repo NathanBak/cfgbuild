@@ -39,12 +39,11 @@ jobs:
         with:
           version: ${{ steps.previoustag.outputs.tag }}
 
-      - name: Release notes
-        id: releasenotes
-        run: |
-          prev=${{ steps.previoustag.outputs.tag }}
-          notes="$(git log --pretty='### %s%n%b%n%h - %an(%ae) - %ad%n%n' $prev..HEAD)"
-          echo "release_notes=$notes" >> $GITHUB_OUTPUT
+      - name: Generate changelog
+        id: changelog
+        uses: metcalfc/changelog-generator@v4.0.1
+        with:
+          myToken: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Create Patch Release
         if: ${{ github.event.inputs.release_type == 'patch'}}
@@ -54,7 +53,7 @@ jobs:
         with:
           tag_name: ${{ steps.semvers.outputs.v_patch }}
           release_name: ${{ steps.semvers.outputs.v_patch }}
-          body: ${{ steps.releasenotes.outputs.release_notes }}
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
 
@@ -66,7 +65,7 @@ jobs:
         with:
           tag_name: ${{ steps.semvers.outputs.v_minor }}
           release_name: ${{ steps.semvers.outputs.v_minor }}
-          body: ${{ steps.releasenotes.outputs.release_notes }}
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
 
@@ -78,7 +77,7 @@ jobs:
         with:
           tag_name: ${{ steps.semvers.outputs.v_major }}
           release_name: ${{ steps.semvers.outputs.v_major }}
-          body: ${{ steps.releasenotes.outputs.release_notes }}
+          body: ${{ steps.changelog.outputs.changelog }}
           draft: false
           prerelease: false
 
