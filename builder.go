@@ -33,6 +33,7 @@ type Builder[T interface{}] struct {
 	setProps      map[string]bool
 	Uint8Lists    bool
 	ListSeparator string
+	TagName       string
 }
 
 type initInterface interface {
@@ -100,7 +101,7 @@ func (b *Builder[T]) readEnvVars() error {
 
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
-		tag := structField.Tag.Get("envvar")
+		tag := structField.Tag.Get(b.getTagName())
 		split := strings.Split(tag, ",")
 		key := "-"
 		if len(split) > 0 {
@@ -458,7 +459,7 @@ func (b *Builder[T]) checkRequired() error {
 
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
-		tag := structField.Tag.Get("envvar")
+		tag := structField.Tag.Get(b.getTagName())
 		split := strings.Split(tag, ",")
 		if len(split) > 0 {
 			key := split[0]
@@ -488,7 +489,7 @@ func (b *Builder[T]) setDefaults() error {
 
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
-		tag := structField.Tag.Get("envvar")
+		tag := structField.Tag.Get(b.getTagName())
 		split := strings.Split(tag, ",")
 
 		if len(split) < 2 || split[0] == "-" {
@@ -509,6 +510,14 @@ func (b *Builder[T]) setDefaults() error {
 	}
 
 	return nil
+}
+
+// getTagName returns the user-specified tag name or defaults to "envvar" if none is specified.
+func (b *Builder[T]) getTagName() string {
+	if b.TagName == "" {
+		return "envvar"
+	}
+	return b.TagName
 }
 
 func split(s, sep string) []string {
