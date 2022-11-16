@@ -258,6 +258,19 @@ func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
 		}
 		v.Set(reflect.ValueOf(vals))
 
+	case reflect.TypeOf(map[string]string{}):
+		const mapsep = ":"
+		mp := make(map[string]string)
+		pairs := split(s, sep)
+		for _, pair := range pairs {
+			kv := split(pair, mapsep)
+			if len(kv) != 2 {
+				return fmt.Errorf("pair did not contain exactly one %q map separator", mapsep)
+			}
+			mp[kv[0]] = kv[1]
+		}
+		v.Set(reflect.ValueOf(mp))
+
 	default:
 
 		if v.CanInterface() {
