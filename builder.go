@@ -25,15 +25,28 @@ func InitConfig(cfg interface{}) error {
 	return err
 }
 
+// Default values for builder configuration fields
+const (
+	DefaultTagName           = "envvar"
+	DefaultListSeparator     = ","
+	DefaultKeyValueSeparator = ":"
+)
+
 // A Builder is able to create and initialize a Config.  After creating a Builder, run the Build()
 // method.
 type Builder[T interface{}] struct {
-	cfg           T
-	instantiated  bool
-	setProps      map[string]bool
-	Uint8Lists    bool
+	cfg          T
+	instantiated bool
+	setProps     map[string]bool
+	// ListSeparator splits items in a list (slice).  Default is comma (,).
 	ListSeparator string
-	TagName       string
+	// TagName used to identify the environment variable name for a field.  Default is "envvar".
+	TagName string
+	// KeyValueSeparator splits keys and values for maps.  Default is colon (:)
+	KeyValueSeparator string
+	// Uint8Lists designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4).  The
+	// default is false meaning that value will be treated as a series of bytes.
+	Uint8Lists bool
 }
 
 type initInterface interface {
@@ -58,6 +71,7 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 		return b.cfg, err
 	}
 
+	// If config has CfgBuildInit() function, run it.
 	initter, ok := any(b.cfg).(initInterface)
 	if ok {
 		err = initter.CfgBuildInit()
@@ -83,6 +97,7 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 		return b.cfg, err
 	}
 
+	// If config has a CfgBuildValidate() function, run it.
 	validator, ok := any(b.cfg).(validateInterface)
 	if ok {
 		err = validator.CfgBuildValidate()
@@ -259,13 +274,17 @@ func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
 		v.Set(reflect.ValueOf(vals))
 
 	case reflect.TypeOf(map[string]string{}):
-		const mapsep = ":"
+		kvsep := b.KeyValueSeparator
+		if kvsep == "" {
+			kvsep = ":"
+		}
+
 		mp := make(map[string]string)
 		pairs := split(s, sep)
 		for _, pair := range pairs {
-			kv := split(pair, mapsep)
+			kv := split(pair, kvsep)
 			if len(kv) != 2 {
-				return fmt.Errorf("pair did not contain exactly one %q map separator", mapsep)
+				return fmt.Errorf("key/value pair must contain exactly one %q separator", kvsep)
 			}
 			mp[kv[0]] = kv[1]
 		}
@@ -528,14 +547,14 @@ func (b *Builder[T]) setDefaults() error {
 // getTagName returns the user-specified tag name or defaults to "envvar" if none is specified.
 func (b *Builder[T]) getTagName() string {
 	if b.TagName == "" {
-		return "envvar"
+		return DefaultTagName
 	}
 	return b.TagName
 }
 
 func split(s, sep string) []string {
 	if sep == "" {
-		sep = ","
+		sep = DefaultListSeparator
 	}
 	vals := strings.Split(s, sep)
 	out := []string{}
