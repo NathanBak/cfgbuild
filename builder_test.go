@@ -40,6 +40,7 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 	os.Setenv("MY_BYTES", "secretPassword")
 	os.Setenv("MY_STRING", "Nobody expects the Spanish Inquisition!")
 	os.Setenv("MY_BOOL", "tRuE")
+	os.Setenv("MY_MAP", "key1:val1,key2:val2,key3:val3")
 
 	b := Builder[*TestConfig]{}
 
@@ -57,20 +58,26 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 	assert.Equal(t, "Nobody expects the Spanish Inquisition!", cfg.MyString)
 	assert.True(t, cfg.MyBool)
 
+	assert.Equal(t, 3, len(cfg.MyMap))
+	assert.Equal(t, "val1", cfg.MyMap["key1"])
+	assert.Equal(t, "val2", cfg.MyMap["key2"])
+	assert.Equal(t, "val3", cfg.MyMap["key3"])
+
 	assert.True(t, cfg.InitCalled)
 	assert.True(t, cfg.ValidateCalled)
 }
 
 type TestConfig struct {
-	MyInt          int           `envvar:"MY_INT"`
-	MyUInt         uint          `envvar:"MY_UINT,required"`
-	MyFloat        float32       `envvar:"MY_FLOAT"`
-	MyDuration     time.Duration `envvar:"MY_DURATION"`
-	MyTime         time.Time     `envvar:"MY_TIME"`
-	MyBytes        []byte        `envvar:"MY_BYTES"`
-	MyString       string        `envvar:"MY_STRING"`
-	MyBool         bool          `envvar:"MY_BOOL"`
-	MyDefaultInt   int           `envvar:"MY_DEFAULT_INT,default=1234"`
+	MyInt          int               `envvar:"MY_INT"`
+	MyUInt         uint              `envvar:"MY_UINT,required"`
+	MyFloat        float32           `envvar:"MY_FLOAT"`
+	MyDuration     time.Duration     `envvar:"MY_DURATION"`
+	MyTime         time.Time         `envvar:"MY_TIME"`
+	MyBytes        []byte            `envvar:"MY_BYTES"`
+	MyString       string            `envvar:"MY_STRING"`
+	MyBool         bool              `envvar:"MY_BOOL"`
+	MyDefaultInt   int               `envvar:"MY_DEFAULT_INT,default=1234"`
+	MyMap          map[string]string `envvar:"MY_MAP"`
 	InitCalled     bool
 	ValidateCalled bool
 }
