@@ -83,6 +83,13 @@ func main() {
 
 ```
 
+Here are the options that can be set on a Builder:
+| Name              | Default | Description                                                |
+|-------------------|---------|------------------------------------------------------------|
+| ListSeparator     | ,       | splits items in a list (slice)                             |
+| KeyValueSeparator | :       | splits keys and values for maps                            |
+| TagName           | envvar  | used to identify the environment variable name for a field |
+| Uint8Lists        | false   | when set to true it designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4) instead of as a series of bytes |
 
 
 
@@ -108,6 +115,13 @@ If there is a default value, it can be set using the `default` flag.
 MyNumber int `envvar:"ENV_VAR_NAME,default=1234"`
 ```
 If the environment variable is not set then the default value specified after the equals sign will be used instead.  There is no compile time validation of the default value so if an integer has something like `default=abc` specified then the cfgbuild.Builder.Build() function will always fail.
+
+### Prefix
+The `prefix` flag is used when a nested Config should have a preflix applied to all environment variable names.
+```golang
+ChildConfig AnotherConfig `,prefix="ANOTHER_"`
+```
+In the above example, if "AnotherConfig" had field associated with the environment variable `PORT` when when initializing the nested config it would read the environment variable `ANOTHER_PORT`.  Also note that that the tag for a nested Config does not have an environment variable name.
 
 ## Functions
 Additional flexibility and customization can be achieved by adding implementations of specific functions to the Config struct.
