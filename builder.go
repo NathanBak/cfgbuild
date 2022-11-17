@@ -42,6 +42,7 @@ type Builder[T interface{}] struct {
 	setProps     map[string]bool
 	debug        bool
 	indent       string
+	prefix       string
 	// ListSeparator splits items in a list (slice).  Default is comma (,).
 	ListSeparator string
 	// TagName used to identify the environment variable name for a field.  Default is "envvar".
@@ -116,11 +117,6 @@ func (b *Builder[T]) readEnvVars() error {
 	b.printDebugFunctionStart()
 	defer b.printDebugFunctionFinish()
 
-	err := b.instantiateCfg()
-	if err != nil {
-		return err
-	}
-
 	typ := reflect.TypeOf(b.cfg).Elem()
 	value := reflect.ValueOf(b.cfg).Elem()
 
@@ -138,11 +134,7 @@ func (b *Builder[T]) readEnvVars() error {
 		}
 
 		tag := field.Tag.Get(b.getTagName())
-		split := strings.Split(tag, ",")
-		key := ""
-		if len(split) > 0 {
-			key = split[0]
-		}
+		key := getTagKey(tag)
 		if key == "-" {
 			b.printDebugf("skipping field %q because env var key is set to \"-\"", field.Name)
 			continue
@@ -156,7 +148,18 @@ func (b *Builder[T]) readEnvVars() error {
 				myVal = myNew.Elem().Interface()
 			}
 
-			cb := Builder[interface{}]{cfg: myVal, debug: b.debug, indent: b.indent}
+			cb := Builder[interface{}]{
+				cfg:               myVal,
+				debug:             b.debug,
+				indent:            b.indent,
+				ListSeparator:     b.ListSeparator,
+				KeyValueSeparator: b.KeyValueSeparator,
+				TagName:           b.TagName,
+				Uint8Lists:        b.Uint8Lists,
+			}
+
+			cb.prefix, _ = getTagAttribute(tag, "prefix")
+
 			ccfg, err := cb.Build()
 			if err != nil {
 				return err
@@ -174,10 +177,10 @@ func (b *Builder[T]) readEnvVars() error {
 			} else {
 				b.printDebugf("no properties set for field %q", field.Name)
 			}
-		} else if envVarVal, ok := os.LookupEnv(key); ok {
-			err = b.setFieldValue(value.Field(i), envVarVal)
+		} else if envVarVal, ok := os.LookupEnv(b.prefix + key); ok {
+			err := b.setFieldValue(field.Name, value.Field(i), envVarVal)
 			if err != nil {
-				return fmt.Errorf("error reading %q (%s)", key, err.Error())
+				return fmt.Errorf("error reading %q (%s)", b.prefix+key, err.Error())
 			}
 			b.printDebugf("set value for field %q", field.Name)
 			b.setProps[key] = true
@@ -199,9 +202,16 @@ func (b *Builder[T]) instantiateCfg() error {
 	return nil
 }
 
-func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
+func (b *Builder[T]) setFieldValue(fieldName string, v reflect.Value, s string) error {
 	b.printDebugFunctionStart()
 	defer b.printDebugFunctionFinish()
+
+	b.printDebugf("fieldName: %q\n%stype:      %q\n%skind:      %q\n%sstringval: %q\n%s",
+		fieldName, b.indent,
+		v.Type().String(), b.indent,
+		v.Kind().String(), b.indent,
+		s, b.indent,
+	)
 
 	if !v.CanAddr() {
 		return errors.New("unable to obtain field address")
@@ -547,15 +557,14 @@ func (b *Builder[T]) checkRequired() error {
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
 		tag := structField.Tag.Get(b.getTagName())
-		split := strings.Split(tag, ",")
-		if len(split) > 0 {
-			key := split[0]
-			if key == "-" {
-				continue
-			}
-			if strings.Contains(tag, ",required") && !b.setProps[key] {
-				missingRequired = append(missingRequired, key)
-			}
+		key := getTagKey(tag)
+		_, required := getTagAttribute(tag, "required")
+
+		if key == "-" {
+			continue
+		}
+		if required && !b.setProps[key] {
+			missingRequired = append(missingRequired, key)
 		}
 	}
 
@@ -579,21 +588,16 @@ func (b *Builder[T]) setDefaults() error {
 	for i := 0; i < typ.NumField(); i++ {
 		structField := typ.Field(i)
 		tag := structField.Tag.Get(b.getTagName())
-		split := strings.Split(tag, ",")
+		key := getTagKey(tag)
 
-		if len(split) < 2 || split[0] == "-" {
+		if key == "-" {
 			continue
 		}
 
-		for j := 1; j < len(split); j++ {
-			if strings.HasPrefix(split[j], "default=") {
-				defaultVal := strings.TrimPrefix(split[j], "default=")
-				err := b.setFieldValue(value.Field(i), defaultVal)
-				if err != nil {
-					key := split[0]
-					return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
-				}
-				break
+		if defaultVal, ok := getTagAttribute(tag, "default"); ok {
+			err := b.setFieldValue(structField.Name, value.Field(i), defaultVal)
+			if err != nil {
+				return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
 			}
 		}
 	}
@@ -692,4 +696,21 @@ func parseFloats[T floats](s, sep string, bitsize int) ([]T, error) {
 
 	}
 	return floats, nil
+}
+
+func getTagKey(tagVal string) string {
+	return strings.Split(tagVal, ",")[0]
+}
+
+func getTagAttribute(tagVal, attributeName string) (string, bool) {
+	prefix := attributeName + "="
+	for _, a := range strings.Split(tagVal, ",") {
+		if a == attributeName {
+			return "", true
+		}
+		if strings.HasPrefix(a, prefix) {
+			return strings.TrimPrefix(a, prefix), true
+		}
+	}
+	return "", false
 }
