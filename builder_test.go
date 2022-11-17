@@ -63,8 +63,8 @@ func TestConfigBuilderEnvVars(t *testing.T) {
 	assert.Equal(t, "val2", cfg.MyMap["key2"])
 	assert.Equal(t, "val3", cfg.MyMap["key3"])
 
-	assert.True(t, cfg.InitCalled)
-	assert.True(t, cfg.ValidateCalled)
+	assert.True(t, cfg.initCalled)
+	assert.True(t, cfg.validateCalled)
 }
 
 type TestConfig struct {
@@ -78,20 +78,20 @@ type TestConfig struct {
 	MyBool         bool              `envvar:"MY_BOOL"`
 	MyDefaultInt   int               `envvar:"MY_DEFAULT_INT,default=1234"`
 	MyMap          map[string]string `envvar:"MY_MAP"`
-	InitCalled     bool
-	ValidateCalled bool
+	initCalled     bool
+	validateCalled bool
 }
 
 func (cfg *TestConfig) CfgBuildInit() error {
 	cfg.MyInt = 8081
 	cfg.MyDuration = 3 * time.Second
 	cfg.MyTime = time.Date(2000, time.March, 17, 0, 13, 37, 0, time.UTC)
-	cfg.InitCalled = true
+	cfg.initCalled = true
 	return nil
 }
 
 func (cfg *TestConfig) CfgBuildValidate() error {
-	cfg.ValidateCalled = true
+	cfg.validateCalled = true
 	return nil
 }
 

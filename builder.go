@@ -7,9 +7,11 @@ import (
 	"math/bits"
 	"os"
 	"reflect"
+	"runtime"
 	"strconv"
 	"strings"
 	"time"
+	"unicode"
 )
 
 // NewConfig will create and initialize a Config of the provided type.
@@ -38,6 +40,8 @@ type Builder[T interface{}] struct {
 	cfg          T
 	instantiated bool
 	setProps     map[string]bool
+	debug        bool
+	indent       string
 	// ListSeparator splits items in a list (slice).  Default is comma (,).
 	ListSeparator string
 	// TagName used to identify the environment variable name for a field.  Default is "envvar".
@@ -58,6 +62,8 @@ type validateInterface interface {
 }
 
 func (b *Builder[T]) Build() (cfg T, err error) {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
 
 	// Don't Panic!
 	defer func() {
@@ -70,6 +76,7 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	if err != nil {
 		return b.cfg, err
 	}
+	b.printDebugf("building type %T", b.cfg)
 
 	// If config has CfgBuildInit() function, run it.
 	initter, ok := any(b.cfg).(initInterface)
@@ -106,6 +113,9 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 }
 
 func (b *Builder[T]) readEnvVars() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
+
 	err := b.instantiateCfg()
 	if err != nil {
 		return err
@@ -115,22 +125,61 @@ func (b *Builder[T]) readEnvVars() error {
 	value := reflect.ValueOf(b.cfg).Elem()
 
 	for i := 0; i < typ.NumField(); i++ {
-		structField := typ.Field(i)
-		tag := structField.Tag.Get(b.getTagName())
+		field := typ.Field(i)
+
+		var first rune
+		for _, c := range field.Name {
+			first = c
+			break
+		}
+		if unicode.IsLower(first) {
+			b.printDebugf("skipping %q because it is not a public field", field.Name)
+			continue
+		}
+
+		tag := field.Tag.Get(b.getTagName())
 		split := strings.Split(tag, ",")
-		key := "-"
+		key := ""
 		if len(split) > 0 {
 			key = split[0]
 		}
 		if key == "-" {
+			b.printDebugf("skipping field %q because env var key is set to \"-\"", field.Name)
 			continue
 		}
+		if key == "" {
+			myTyp := value.Field(i).Type()
+			myNew := reflect.New(myTyp)
+			myVal := myNew.Interface()
 
-		if envVarVal, ok := os.LookupEnv(key); ok {
+			if strings.HasPrefix(myTyp.String(), "*") {
+				myVal = myNew.Elem().Interface()
+			}
+
+			cb := Builder[interface{}]{cfg: myVal, debug: b.debug, indent: b.indent}
+			ccfg, err := cb.Build()
+			if err != nil {
+				return err
+			}
+
+			rvo := reflect.ValueOf(ccfg)
+
+			if len(cb.setProps) > 0 {
+				if strings.HasPrefix(myTyp.String(), "*") {
+					value.Field(i).Set(rvo)
+				} else {
+					ele := rvo.Elem()
+					value.Field(i).Set(ele)
+				}
+			} else {
+				b.printDebugf("no properties set for field %q", field.Name)
+			}
+		} else if envVarVal, ok := os.LookupEnv(key); ok {
 			err = b.setFieldValue(value.Field(i), envVarVal)
 			if err != nil {
 				return fmt.Errorf("error reading %q (%s)", key, err.Error())
 			}
+			b.printDebugf("set value for field %q", field.Name)
 			b.setProps[key] = true
 		}
 	}
@@ -139,6 +188,8 @@ func (b *Builder[T]) readEnvVars() error {
 }
 
 func (b *Builder[T]) instantiateCfg() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
 	if !b.instantiated {
 		typ := reflect.TypeOf(b.cfg)
 		val := reflect.New(typ.Elem()).Interface().(T)
@@ -149,6 +200,8 @@ func (b *Builder[T]) instantiateCfg() error {
 }
 
 func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
 
 	if !v.CanAddr() {
 		return errors.New("unable to obtain field address")
@@ -486,6 +539,8 @@ func (b *Builder[T]) setFieldValue(v reflect.Value, s string) error {
 // checkRequired looks at each field and ensures that each field with a "required" tag was
 // previously set from an env var.  An error is returned if any required fields were not set.
 func (b *Builder[T]) checkRequired() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
 	typ := reflect.TypeOf(b.cfg).Elem()
 	missingRequired := []string{}
 
@@ -515,6 +570,8 @@ func (b *Builder[T]) checkRequired() error {
 }
 
 func (b *Builder[T]) setDefaults() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
 
 	typ := reflect.TypeOf(b.cfg).Elem()
 	value := reflect.ValueOf(b.cfg).Elem()
@@ -550,6 +607,35 @@ func (b *Builder[T]) getTagName() string {
 		return DefaultTagName
 	}
 	return b.TagName
+}
+
+func (b *Builder[T]) printDebugFunctionStart() {
+	if b.debug {
+		pc, _, line, _ := runtime.Caller(1)
+		fmt.Printf("%sRunning function %s [line %d]\n", b.indent, funcName(pc), line)
+		b.indent += "> "
+	}
+}
+
+func (b *Builder[T]) printDebugFunctionFinish() {
+	if b.debug {
+		pc, _, line, _ := runtime.Caller(1)
+		b.indent = b.indent[2:]
+		fmt.Printf("%sFinished running function %s [line %d]\n", b.indent, funcName(pc), line)
+	}
+}
+
+func (b *Builder[T]) printDebugf(msg string, a ...any) {
+	if b.debug {
+		_, _, line, _ := runtime.Caller(1)
+		fmt.Printf("%s%s [line %d]\n", b.indent, fmt.Sprintf(msg, a...), line)
+	}
+}
+
+func funcName(pc uintptr) string {
+	fn := runtime.FuncForPC(pc).Name()
+	split := strings.Split(fn, ".")
+	return split[len(split)-1] + "()"
 }
 
 func split(s, sep string) []string {
