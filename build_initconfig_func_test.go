@@ -35,6 +35,6 @@ func TestConfigBuildFuncEnvVars(t *testing.T) {
 	assert.Equal(t, "Nobody expects the Spanish Inquisition!", cfg.MyString)
 	assert.True(t, cfg.MyBool)
 
-	assert.True(t, cfg.InitCalled)
-	assert.True(t, cfg.ValidateCalled)
+	assert.True(t, cfg.initCalled)
+	assert.True(t, cfg.validateCalled)
 }
