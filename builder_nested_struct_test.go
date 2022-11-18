@@ -42,11 +42,11 @@ func TestNestedStructs(t *testing.T) {
 }
 
 type TestParentConfig struct {
-	MyInt          int    `envvar:"MY_INT"`
-	MyString       string `envvar:"MY_STRING"`
-	MyBool         bool   `envvar:"MY_BOOL"`
-	MyChild        TestChildConfig
-	MyPointerChild *TestChildConfig `envvar:",prefix=POINTER_"`
+	MyInt          int              `envvar:"MY_INT"`
+	MyString       string           `envvar:"MY_STRING"`
+	MyBool         bool             `envvar:"MY_BOOL"`
+	MyChild        TestChildConfig  `envvar:">"`
+	MyPointerChild *TestChildConfig `envvar:">,prefix=POINTER_"`
 }
 
 type TestChildConfig struct {
