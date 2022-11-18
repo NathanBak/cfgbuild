@@ -123,6 +123,19 @@ ChildConfig AnotherConfig `,prefix="ANOTHER_"`
 ```
 In the above example, if "AnotherConfig" had field associated with the environment variable `PORT` when when initializing the nested config it would read the environment variable `ANOTHER_PORT`.  Also note that that the tag for a nested Config does not have an environment variable name.
 
+### unmarshalJSON
+The `unmarshalJSON` flag is used when the environment variable is in JSON and that should be unmarshaled into a nested struct.
+```golang
+type Child struct {
+	MyInt int `json:"i"`
+}
+
+type Config struct {
+	Nested Child `envvar:"NESTED_CHILD,unmarshalJSON,default={\"i\":3}"`
+}
+```
+In the above example, the default for Nested Child MyInt would be 3 and it would apply any JSON snippet in the `NESTED_CHILD` envirnonment variable on top.
+
 ## Functions
 Additional flexibility and customization can be achieved by adding implementations of specific functions to the Config struct.
 
