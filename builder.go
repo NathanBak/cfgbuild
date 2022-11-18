@@ -162,11 +162,18 @@ func (b *Builder[T]) readEnvVars() error {
 
 		tag := field.Tag.Get(b.getTagName())
 		key := getTagKey(tag)
+
 		if key == "-" {
 			b.printDebugf("skipping field %q because env var key is set to \"-\"", field.Name)
 			continue
 		}
+
 		if key == "" {
+			b.printDebugf("skipping field %q because env var key is not set", field.Name)
+			continue
+		}
+
+		if key == ">" {
 			myTyp := value.Field(i).Type()
 			myNew := reflect.New(myTyp)
 			myVal := myNew.Interface()
@@ -616,10 +623,6 @@ func (b *Builder[T]) setDefaults() error {
 		structField := typ.Field(i)
 		tag := structField.Tag.Get(b.getTagName())
 		key := getTagKey(tag)
-
-		if key == "-" {
-			continue
-		}
 
 		if defaultVal, ok := getTagAttribute(tag, "default"); ok {
 			err := b.setFieldValue(structField.Name, value.Field(i), defaultVal)

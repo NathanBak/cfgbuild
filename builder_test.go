@@ -80,6 +80,7 @@ type TestConfig struct {
 	MyMap          map[string]string `envvar:"MY_MAP"`
 	initCalled     bool
 	validateCalled bool
+	NotSet         int
 }
 
 func (cfg *TestConfig) CfgBuildInit() error {
