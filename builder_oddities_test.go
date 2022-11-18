@@ -1,8 +1,11 @@
 package cfgbuild
 
 import (
+	"fmt"
+	"net"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 )
@@ -35,6 +38,12 @@ type TestOddConfig struct {
 
 	// Non-public fields (starting with lowercase letter) are not set
 	notPublic int `envvar:"MY_INT"`
+
+	// net.IP implements the encoding.TextUnmarshaler interface
+	MyIP net.IP `envvar:"-,default=192.168.0.42"`
+
+	// time.Time implements the encoding.TextUnmarshaler interface
+	MyTime time.Time `envvar:"-,default=2000-03-17T13:37:00Z"`
 }
 
 type TestNestedConfig struct {
@@ -50,6 +59,8 @@ func TestOddities(t *testing.T) {
 	os.Setenv("ALT_MY_VAL", "alt my val")
 	os.Setenv("MY_INT", "42")
 
+	fmt.Println(time.Now().String())
+
 	b := Builder[*TestOddConfig]{debug: true}
 	cfg, err := b.Build()
 	assert.NoError(t, err)
@@ -63,5 +74,8 @@ func TestOddities(t *testing.T) {
 	assert.Equal(t, 42, cfg.MySameInt)
 	assert.Nil(t, cfg.NotConfig)
 	assert.Zero(t, cfg.notPublic)
-
+	assert.Equal(t, "192.168.0.42", cfg.MyIP.String())
+	assert.Equal(t, 17, cfg.MyTime.Local().Day())
+	assert.Equal(t, time.March, cfg.MyTime.Local().Month())
+	assert.Equal(t, 2000, cfg.MyTime.Local().Year())
 }

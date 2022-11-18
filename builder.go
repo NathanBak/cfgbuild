@@ -29,6 +29,7 @@ package cfgbuild
 
 import (
 	"encoding"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"math/bits"
@@ -68,6 +69,7 @@ type Builder[T interface{}] struct {
 	instantiated bool
 	setProps     map[string]bool
 	debug        bool
+	throwPanics  bool
 	indent       string
 	prefix       string
 	// ListSeparator splits items in a list (slice).  Default is comma (,).
@@ -93,12 +95,14 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	b.printDebugFunctionStart()
 	defer b.printDebugFunctionFinish()
 
-	// Don't Panic!
-	defer func() {
-		if panicErr := recover(); panicErr != nil {
-			err = fmt.Errorf("builder panic:  %v", panicErr)
-		}
-	}()
+	if !b.throwPanics {
+		// Don't Panic!
+		defer func() {
+			if panicErr := recover(); panicErr != nil {
+				err = fmt.Errorf("builder panic:  %v", panicErr)
+			}
+		}()
+	}
 
 	err = b.instantiateCfg()
 	if err != nil {
@@ -212,12 +216,25 @@ func (b *Builder[T]) readEnvVars() error {
 				b.printDebugf("no properties set for field %q", field.Name)
 			}
 		} else if envVarVal, ok := os.LookupEnv(b.prefix + key); ok {
-			err := b.setFieldValue(field.Name, value.Field(i), envVarVal)
-			if err != nil {
-				return fmt.Errorf("error reading %q (%s)", b.prefix+key, err.Error())
+
+			if _, tagFound := getTagAttribute(tag, "unmarshalJSON"); tagFound {
+				fieldVal := value.Field(i)
+				fieldInterface := fieldVal.Addr().Interface()
+				err := json.Unmarshal([]byte(envVarVal), fieldInterface)
+				if err != nil {
+					return err
+				}
+				b.printDebugf("unmarshaled value for field %q", field.Name)
+				b.setProps[key] = true
+			} else {
+
+				err := b.setFieldValue(field.Name, value.Field(i), envVarVal)
+				if err != nil {
+					return fmt.Errorf("error reading %q (%s)", b.prefix+key, err.Error())
+				}
+				b.printDebugf("set value for field %q", field.Name)
+				b.setProps[key] = true
 			}
-			b.printDebugf("set value for field %q", field.Name)
-			b.setProps[key] = true
 		}
 	}
 
@@ -391,15 +408,13 @@ func (b *Builder[T]) setFieldValue(fieldName string, v reflect.Value, s string) 
 
 		if v.CanInterface() {
 			vi := v.Interface()
-			unmarshaller, ok := vi.(encoding.TextUnmarshaler)
+			textUnmarshaler, ok := vi.(encoding.TextUnmarshaler)
 			if !ok {
-				if !ok {
-					unmarshaller, ok = v.Addr().Interface().(encoding.TextUnmarshaler)
-				}
+				textUnmarshaler, ok = v.Addr().Interface().(encoding.TextUnmarshaler)
 			}
 
 			if ok {
-				return unmarshaller.UnmarshalText([]byte(s))
+				return textUnmarshaler.UnmarshalText([]byte(s))
 			}
 		}
 
@@ -625,9 +640,19 @@ func (b *Builder[T]) setDefaults() error {
 		key := getTagKey(tag)
 
 		if defaultVal, ok := getTagAttribute(tag, "default"); ok {
-			err := b.setFieldValue(structField.Name, value.Field(i), defaultVal)
-			if err != nil {
-				return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
+			if _, tagFound := getTagAttribute(tag, "unmarshalJSON"); tagFound {
+				fieldVal := value.Field(i)
+				fieldInterface := fieldVal.Addr().Interface()
+				err := json.Unmarshal([]byte(defaultVal), fieldInterface)
+				if err != nil {
+					return err
+				}
+
+			} else {
+				err := b.setFieldValue(structField.Name, value.Field(i), defaultVal)
+				if err != nil {
+					return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
+				}
 			}
 		}
 	}
@@ -732,6 +757,8 @@ func getTagKey(tagVal string) string {
 	return strings.Split(tagVal, ",")[0]
 }
 
+// getTagAttribute looks at the tag value and returns the attribute value for the specified
+// attribute name and a bool indicator as to whether or not the attribute exists in the tag value.
 func getTagAttribute(tagVal, attributeName string) (string, bool) {
 	prefix := attributeName + "="
 	for _, a := range strings.Split(tagVal, ",") {
