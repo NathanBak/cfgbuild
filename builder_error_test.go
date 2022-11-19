@@ -17,7 +17,7 @@ func TestConfigBuilderErrors(t *testing.T) {
 		{"MY_TIME", "1999", `error reading "MY_TIME" (parsing time "1999" as "2006-01-02T15:04:05Z07:00": cannot parse "" as "-")`},
 		{"MY_DURATION", "3ly", `error reading "MY_DURATION" (time: unknown unit "ly" in duration "3ly")`},
 		{"MY_BOOL", "supposition", `error reading "MY_BOOL" (string "supposition" is not a valid boolean value)`},
-		{"NOT_MY_UINT", "123", `missing required var "MY_UINT"`},
+		{"NOT_MY_UINT", "123", `missing required var "MyUInt"`},
 	}
 
 	for i, tst := range tsts {
