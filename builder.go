@@ -110,6 +110,11 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	}
 	b.printDebugf("building type %T", b.cfg)
 
+	err = b.validateCfgTags()
+	if err != nil {
+		return b.cfg, err
+	}
+
 	// If config has CfgBuildInit() function, run it.
 	initter, ok := any(b.cfg).(initInterface)
 	if ok {
@@ -144,7 +149,155 @@ func (b *Builder[T]) Build() (cfg T, err error) {
 	return b.cfg, err
 }
 
+func (b *Builder[T]) validateCfgTags() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
+
+	typ := reflect.TypeOf(b.cfg).Elem()
+
+	for i := 0; i < typ.NumField(); i++ {
+		field := typ.Field(i)
+		fieldName := field.Name
+		tagValue := field.Tag.Get(b.getTagName())
+
+		// Ignore field if tag value isn't set
+		if tagValue == "" {
+			continue
+		}
+
+		// Tags may not be set on non-public fields
+		if !isPublicField(field) {
+			msg := "non-public fields may not have the tag set"
+			return &TagSyntaxError{
+				FieldName: fieldName,
+				TagName:   b.getTagName(),
+				TagValue:  tagValue,
+				msg:       msg,
+			}
+		}
+
+		key := getTagKey(tagValue)
+
+		if key == "" {
+			msg := "tag does not have the name attribute set"
+			return &TagSyntaxError{
+				FieldName: fieldName,
+				TagName:   b.getTagName(),
+				TagValue:  tagValue,
+				msg:       msg,
+			}
+		}
+
+		_, defaultSet := getTagAttribute(tagValue, tagAttrDefault)
+		if key == ">" && defaultSet {
+			msg := "the \"default\" attribute is not allowed on \">\" nested config fields"
+			return &TagSyntaxError{
+				FieldName: fieldName,
+				TagName:   b.getTagName(),
+				TagValue:  tagValue,
+				msg:       msg,
+			}
+		}
+
+		_, requiredSet := getTagAttribute(tagValue, tagAttrRequired)
+		if key == "-" && requiredSet {
+			msg := "the \"required\" attribute is not allowed on \"-\" fields"
+			return &TagSyntaxError{
+				FieldName: fieldName,
+				TagName:   b.getTagName(),
+				TagValue:  tagValue,
+				msg:       msg,
+			}
+		}
+
+		_, marshalJSONSet := getTagAttribute(tagValue, tagAttrUnmarshalJSON)
+		if marshalJSONSet {
+			value := reflect.ValueOf(b.cfg).Elem()
+			fieldVal := value.Field(i)
+			fieldInterface := fieldVal.Addr().Interface()
+			err := json.Unmarshal([]byte("{}"), fieldInterface)
+			if err != nil {
+				msg := "field type does not support \"unmarshalJSON\" tag attribute"
+				return &TagSyntaxError{
+					FieldName: fieldName,
+					TagName:   b.getTagName(),
+					TagValue:  tagValue,
+					msg:       msg,
+				}
+			}
+		}
+
+		_, prefixSet := getTagAttribute(tagValue, tagAttrPrefix)
+		if key != ">" && prefixSet {
+			msg := `the "prefix" attribute is only allowed on ">" nested config fields`
+			return &TagSyntaxError{
+				FieldName: fieldName,
+				TagName:   b.getTagName(),
+				TagValue:  tagValue,
+				msg:       msg,
+			}
+		}
+
+		attrNames := getTagAttributeNames(tagValue)
+		for _, attrName := range attrNames {
+			found := false
+			for _, attr := range allTagAttr {
+				if attrName == string(attr) {
+					found = true
+					break
+				}
+			}
+			if !found && attrName != "" {
+				msg := fmt.Sprintf(`tag value contains non-existent attribute %q`, attrName)
+				return &TagSyntaxError{
+					FieldName: fieldName,
+					TagName:   b.getTagName(),
+					TagValue:  tagValue,
+					msg:       msg,
+				}
+			}
+		}
+
+		for _, attr := range allTagAttr {
+			if _, found := getTagAttribute(tagValue, attr); found {
+				if attr.hasValue() && !strings.Contains(tagValue, string(attr)+"=") {
+					msg := fmt.Sprintf(`the %q attribute requires a value`, attr)
+					return &TagSyntaxError{
+						FieldName: fieldName,
+						TagName:   b.getTagName(),
+						TagValue:  tagValue,
+						msg:       msg,
+					}
+				}
+
+				if !attr.hasValue() && strings.Contains(tagValue, string(attr)+"=") {
+					msg := fmt.Sprintf(`the %q attribute may not have a value`, attr)
+					return &TagSyntaxError{
+						FieldName: fieldName,
+						TagName:   b.getTagName(),
+						TagValue:  tagValue,
+						msg:       msg,
+					}
+				}
+			}
+		}
+	}
+	return nil
+}
+
+func (b *Builder[T]) setDefaults() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
+	return b.fieldLoop(true)
+}
+
 func (b *Builder[T]) readEnvVars() error {
+	b.printDebugFunctionStart()
+	defer b.printDebugFunctionFinish()
+	return b.fieldLoop(false)
+}
+
+func (b *Builder[T]) fieldLoop(setDefault bool) error {
 	b.printDebugFunctionStart()
 	defer b.printDebugFunctionFinish()
 
@@ -153,27 +306,25 @@ func (b *Builder[T]) readEnvVars() error {
 
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
-
-		var first rune
-		for _, c := range field.Name {
-			first = c
-			break
-		}
-		if unicode.IsLower(first) {
-			b.printDebugf("skipping %q because it is not a public field", field.Name)
-			continue
-		}
+		fieldName := field.Name
 
 		tag := field.Tag.Get(b.getTagName())
-		key := getTagKey(tag)
-
-		if key == "-" {
-			b.printDebugf("skipping field %q because env var key is set to \"-\"", field.Name)
+		if tag == "" {
+			b.printDebugf("skipping %q because it does not have the %q tag set", fieldName,
+				b.getTagName())
 			continue
 		}
 
-		if key == "" {
-			b.printDebugf("skipping field %q because env var key is not set", field.Name)
+		key := getTagKey(tag)
+
+		if !setDefault && key == "-" {
+			b.printDebugf("skipping field %q because env var key is set to \"-\"", fieldName)
+			continue
+		}
+
+		defaultVal, defaultAttributeSet := getTagAttribute(tag, tagAttrDefault)
+
+		if setDefault && !defaultAttributeSet {
 			continue
 		}
 
@@ -196,7 +347,7 @@ func (b *Builder[T]) readEnvVars() error {
 				Uint8Lists:        b.Uint8Lists,
 			}
 
-			cb.prefix, _ = getTagAttribute(tag, "prefix")
+			cb.prefix, _ = getTagAttribute(tag, tagAttrPrefix)
 
 			ccfg, err := cb.Build()
 			if err != nil {
@@ -212,28 +363,47 @@ func (b *Builder[T]) readEnvVars() error {
 					ele := rvo.Elem()
 					value.Field(i).Set(ele)
 				}
+				b.setProps[fieldName] = true
 			} else {
-				b.printDebugf("no properties set for field %q", field.Name)
+				b.printDebugf("no properties set for field %q", fieldName)
 			}
-		} else if envVarVal, ok := os.LookupEnv(b.prefix + key); ok {
+		} else {
+			var valStr string
+			if setDefault {
+				valStr = defaultVal
+			} else {
+				if envVarVal, ok := os.LookupEnv(b.prefix + key); ok {
+					valStr = envVarVal
+				} else {
+					continue
+				}
+			}
 
-			if _, tagFound := getTagAttribute(tag, "unmarshalJSON"); tagFound {
+			if _, tagFound := getTagAttribute(tag, tagAttrUnmarshalJSON); tagFound {
 				fieldVal := value.Field(i)
 				fieldInterface := fieldVal.Addr().Interface()
-				err := json.Unmarshal([]byte(envVarVal), fieldInterface)
+				err := json.Unmarshal([]byte(valStr), fieldInterface)
 				if err != nil {
 					return err
 				}
 				b.printDebugf("unmarshaled value for field %q", field.Name)
-				b.setProps[key] = true
+
+				if !setDefault {
+					b.setProps[fieldName] = true
+				}
 			} else {
 
-				err := b.setFieldValue(field.Name, value.Field(i), envVarVal)
+				err := b.setFieldValue(fieldName, value.Field(i), valStr)
 				if err != nil {
+					if setDefault {
+						return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
+					}
 					return fmt.Errorf("error reading %q (%s)", b.prefix+key, err.Error())
 				}
-				b.printDebugf("set value for field %q", field.Name)
-				b.setProps[key] = true
+				b.printDebugf("set value for field %q", fieldName)
+				if !setDefault {
+					b.setProps[fieldName] = true
+				}
 			}
 		}
 	}
@@ -604,16 +774,17 @@ func (b *Builder[T]) checkRequired() error {
 	missingRequired := []string{}
 
 	for i := 0; i < typ.NumField(); i++ {
-		structField := typ.Field(i)
-		tag := structField.Tag.Get(b.getTagName())
+		field := typ.Field(i)
+		fieldName := field.Name
+		tag := field.Tag.Get(b.getTagName())
 		key := getTagKey(tag)
-		_, required := getTagAttribute(tag, "required")
+		_, required := getTagAttribute(tag, tagAttrRequired)
 
 		if key == "-" {
 			continue
 		}
-		if required && !b.setProps[key] {
-			missingRequired = append(missingRequired, key)
+		if required && !b.setProps[fieldName] {
+			missingRequired = append(missingRequired, fieldName)
 		}
 	}
 
@@ -625,39 +796,6 @@ func (b *Builder[T]) checkRequired() error {
 	default:
 		return fmt.Errorf("missing required vars: %s", strings.Join(missingRequired, ","))
 	}
-}
-
-func (b *Builder[T]) setDefaults() error {
-	b.printDebugFunctionStart()
-	defer b.printDebugFunctionFinish()
-
-	typ := reflect.TypeOf(b.cfg).Elem()
-	value := reflect.ValueOf(b.cfg).Elem()
-
-	for i := 0; i < typ.NumField(); i++ {
-		structField := typ.Field(i)
-		tag := structField.Tag.Get(b.getTagName())
-		key := getTagKey(tag)
-
-		if defaultVal, ok := getTagAttribute(tag, "default"); ok {
-			if _, tagFound := getTagAttribute(tag, "unmarshalJSON"); tagFound {
-				fieldVal := value.Field(i)
-				fieldInterface := fieldVal.Addr().Interface()
-				err := json.Unmarshal([]byte(defaultVal), fieldInterface)
-				if err != nil {
-					return err
-				}
-
-			} else {
-				err := b.setFieldValue(structField.Name, value.Field(i), defaultVal)
-				if err != nil {
-					return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
-				}
-			}
-		}
-	}
-
-	return nil
 }
 
 // getTagName returns the user-specified tag name or defaults to "envvar" if none is specified.
@@ -759,10 +897,10 @@ func getTagKey(tagVal string) string {
 
 // getTagAttribute looks at the tag value and returns the attribute value for the specified
 // attribute name and a bool indicator as to whether or not the attribute exists in the tag value.
-func getTagAttribute(tagVal, attributeName string) (string, bool) {
-	prefix := attributeName + "="
+func getTagAttribute(tagVal string, attributeName tagAttr) (string, bool) {
+	prefix := string(attributeName) + "="
 	for _, a := range strings.Split(tagVal, ",") {
-		if a == attributeName {
+		if a == string(attributeName) {
 			return "", true
 		}
 		if strings.HasPrefix(a, prefix) {
@@ -770,4 +908,63 @@ func getTagAttribute(tagVal, attributeName string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+type TagSyntaxError struct {
+	FieldName string
+	TagName   string
+	TagValue  string
+	msg       string
+}
+
+func (e TagSyntaxError) Error() string {
+	return e.msg
+}
+
+func isPublicField(f reflect.StructField) bool {
+	var first rune
+	for _, c := range f.Name {
+		first = c
+		break
+	}
+	return !unicode.IsLower(first)
+}
+
+type tagAttr string
+
+const (
+	tagAttrDefault       tagAttr = "default"
+	tagAttrPrefix        tagAttr = "prefix"
+	tagAttrRequired      tagAttr = "required"
+	tagAttrUnmarshalJSON tagAttr = "unmarshalJSON"
+)
+
+var allTagAttr = []tagAttr{
+	tagAttrDefault,
+	tagAttrPrefix,
+	tagAttrRequired,
+	tagAttrUnmarshalJSON,
+}
+
+func (a tagAttr) hasValue() bool {
+	switch a {
+	case tagAttrDefault, tagAttrPrefix:
+		return true
+	default:
+		return false
+	}
+}
+
+func getTagAttributeNames(tagValue string) []string {
+	attrs := []string{}
+	first := true
+	for _, a := range strings.Split(tagValue, ",") {
+		if first {
+			first = false
+			continue
+		}
+		kv := strings.Split(a, "=")
+		attrs = append(attrs, kv[0])
+	}
+	return attrs
 }

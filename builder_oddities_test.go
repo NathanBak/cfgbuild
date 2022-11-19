@@ -36,9 +36,6 @@ type TestOddConfig struct {
 	// If not a config, field will not be initialized
 	NotConfig *TestNotConfig
 
-	// Non-public fields (starting with lowercase letter) are not set
-	notPublic int `envvar:"MY_INT"`
-
 	// net.IP implements the encoding.TextUnmarshaler interface
 	MyIP net.IP `envvar:"-,default=192.168.0.42"`
 
@@ -73,7 +70,6 @@ func TestOddities(t *testing.T) {
 	assert.Equal(t, 42, cfg.MyInt)
 	assert.Equal(t, 42, cfg.MySameInt)
 	assert.Nil(t, cfg.NotConfig)
-	assert.Zero(t, cfg.notPublic)
 	assert.Equal(t, "192.168.0.42", cfg.MyIP.String())
 	assert.Equal(t, 17, cfg.MyTime.Local().Day())
 	assert.Equal(t, time.March, cfg.MyTime.Local().Month())
