@@ -16,6 +16,13 @@ type config struct {
 }
 
 // This main function shows how to use a Builder to create a config from env vars.
+//
+// Expected output:
+//
+// cfg.MyInt = 1234
+// cfg.MyFloat = 1.41421356237
+// cfg.MyString = I have a cunning plan
+// cfg.MyBool = true
 func main() {
 
 	os.Setenv("MY_INT", "1234")
@@ -30,6 +37,8 @@ func main() {
 	}
 
 	// print out the different values in the config
-	fmt.Printf("cfg.MyInt = %v\ncfg.MyFloat = %v\ncfg.MyString = %v\ncfg.MyBool = %v",
-		cfg.MyInt, cfg.MyFloat, cfg.MyString, cfg.MyBool)
+	fmt.Println("cfg.MyInt =", cfg.MyInt)
+	fmt.Println("cfg.MyFloat =", cfg.MyFloat)
+	fmt.Println("cfg.MyString =", cfg.MyString)
+	fmt.Println("cfg.MyBool =", cfg.MyBool)
 }

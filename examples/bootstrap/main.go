@@ -9,6 +9,13 @@ import (
 )
 
 // This main function uses a config that bootstraps itself to initialize the fields.
+//
+// Expected output:
+//
+// {"myInt":8081,"myFloat":3.14159,"myString":"Smoke me a kipper, I'll be back for breakfast!","myBool":false}
+// cfg.MyInt = 8081
+// cfg.MyFloat = 3.14159
+// cfg.MyString = Smoke me a kipper, I'll be back for breakfast!
 func main() {
 
 	cfg, err := config.New()

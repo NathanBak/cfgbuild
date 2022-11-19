@@ -17,6 +17,12 @@ type config struct {
 // This main function shows how to use a Builder to create a config from env vars.
 // In this case, on of the config values is an enum.  The enum can be parsed because it
 // implements the TextUnmarshaler interface.
+//
+// Expected output:
+//
+// cfg.MyString = Certainly not. We run.
+// cfg.MyColor = Green
+// cfg.MyColor enum value = 3
 func main() {
 
 	os.Setenv("MY_STRING", "Certainly not. We run.")
