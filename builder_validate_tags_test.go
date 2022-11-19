@@ -13,7 +13,7 @@ func TestValidateConfigTags(t *testing.T) {
 		assert.Error(t, err)
 		e, ok := err.(*TagSyntaxError)
 		assert.True(t, ok, "error should be a TagSyntaxError")
-		assert.Equal(t, "envvar", e.TagName)
+		assert.Equal(t, "envvar", e.TagKey)
 		assert.Equal(t, expectedTagVal, e.TagValue)
 		assert.Equal(t, expectedFieldName, e.FieldName)
 		assert.Equal(t, expectedMsg, e.msg)

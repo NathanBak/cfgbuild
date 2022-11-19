@@ -13,7 +13,7 @@ func TestConfigBuilderCustomTag(t *testing.T) {
 	os.Setenv("myString", "Nobody expects the Spanish Inquisition!")
 	os.Setenv("myBool", "tRuE")
 
-	b := Builder[*TestCustomTagConfig]{TagName: "voodoo"}
+	b := Builder[*TestCustomTagConfig]{TagKey: "voodoo"}
 
 	cfg, err := b.Build()
 	assert.NoError(t, err)
