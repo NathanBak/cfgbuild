@@ -57,7 +57,7 @@ func InitConfig(cfg interface{}) error {
 
 // Default values for builder configuration fields
 const (
-	DefaultTagName           = "envvar"
+	DefaultTagKey            = "envvar"
 	DefaultListSeparator     = ","
 	DefaultKeyValueSeparator = ":"
 )
@@ -74,8 +74,8 @@ type Builder[T interface{}] struct {
 	prefix       string
 	// ListSeparator splits items in a list (slice).  Default is comma (,).
 	ListSeparator string
-	// TagName used to identify the environment variable name for a field.  Default is "envvar".
-	TagName string
+	// TagKey used to identify the field tag value to be used.  Default is "envvar".
+	TagKey string
 	// KeyValueSeparator splits keys and values for maps.  Default is colon (:)
 	KeyValueSeparator string
 	// Uint8Lists designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4).  The
@@ -158,10 +158,10 @@ func (b *Builder[T]) validateCfgTags() error {
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
 		fieldName := field.Name
-		tagValue := field.Tag.Get(b.getTagName())
+		tagValue, ok := field.Tag.Lookup(b.getTagKey())
 
 		// Ignore field if tag value isn't set
-		if tagValue == "" {
+		if !ok {
 			continue
 		}
 
@@ -170,41 +170,41 @@ func (b *Builder[T]) validateCfgTags() error {
 			msg := "non-public fields may not have the tag set"
 			return &TagSyntaxError{
 				FieldName: fieldName,
-				TagName:   b.getTagName(),
+				TagKey:    b.getTagKey(),
 				TagValue:  tagValue,
 				msg:       msg,
 			}
 		}
 
-		key := getTagKey(tagValue)
+		envVarName := getTagEnvVarName(tagValue)
 
-		if key == "" {
+		if envVarName == "" {
 			msg := "tag does not have the name attribute set"
 			return &TagSyntaxError{
 				FieldName: fieldName,
-				TagName:   b.getTagName(),
+				TagKey:    b.getTagKey(),
 				TagValue:  tagValue,
 				msg:       msg,
 			}
 		}
 
 		_, defaultSet := getTagAttribute(tagValue, tagAttrDefault)
-		if key == ">" && defaultSet {
+		if envVarName == ">" && defaultSet {
 			msg := "the \"default\" attribute is not allowed on \">\" nested config fields"
 			return &TagSyntaxError{
 				FieldName: fieldName,
-				TagName:   b.getTagName(),
+				TagKey:    b.getTagKey(),
 				TagValue:  tagValue,
 				msg:       msg,
 			}
 		}
 
 		_, requiredSet := getTagAttribute(tagValue, tagAttrRequired)
-		if key == "-" && requiredSet {
+		if envVarName == "-" && requiredSet {
 			msg := "the \"required\" attribute is not allowed on \"-\" fields"
 			return &TagSyntaxError{
 				FieldName: fieldName,
-				TagName:   b.getTagName(),
+				TagKey:    b.getTagKey(),
 				TagValue:  tagValue,
 				msg:       msg,
 			}
@@ -220,7 +220,7 @@ func (b *Builder[T]) validateCfgTags() error {
 				msg := "field type does not support \"unmarshalJSON\" tag attribute"
 				return &TagSyntaxError{
 					FieldName: fieldName,
-					TagName:   b.getTagName(),
+					TagKey:    b.getTagKey(),
 					TagValue:  tagValue,
 					msg:       msg,
 				}
@@ -228,11 +228,11 @@ func (b *Builder[T]) validateCfgTags() error {
 		}
 
 		_, prefixSet := getTagAttribute(tagValue, tagAttrPrefix)
-		if key != ">" && prefixSet {
+		if envVarName != ">" && prefixSet {
 			msg := `the "prefix" attribute is only allowed on ">" nested config fields`
 			return &TagSyntaxError{
 				FieldName: fieldName,
-				TagName:   b.getTagName(),
+				TagKey:    b.getTagKey(),
 				TagValue:  tagValue,
 				msg:       msg,
 			}
@@ -251,7 +251,7 @@ func (b *Builder[T]) validateCfgTags() error {
 				msg := fmt.Sprintf(`tag value contains non-existent attribute %q`, attrName)
 				return &TagSyntaxError{
 					FieldName: fieldName,
-					TagName:   b.getTagName(),
+					TagKey:    b.getTagKey(),
 					TagValue:  tagValue,
 					msg:       msg,
 				}
@@ -264,7 +264,7 @@ func (b *Builder[T]) validateCfgTags() error {
 					msg := fmt.Sprintf(`the %q attribute requires a value`, attr)
 					return &TagSyntaxError{
 						FieldName: fieldName,
-						TagName:   b.getTagName(),
+						TagKey:    b.getTagKey(),
 						TagValue:  tagValue,
 						msg:       msg,
 					}
@@ -274,7 +274,7 @@ func (b *Builder[T]) validateCfgTags() error {
 					msg := fmt.Sprintf(`the %q attribute may not have a value`, attr)
 					return &TagSyntaxError{
 						FieldName: fieldName,
-						TagName:   b.getTagName(),
+						TagKey:    b.getTagKey(),
 						TagValue:  tagValue,
 						msg:       msg,
 					}
@@ -308,27 +308,27 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 		field := typ.Field(i)
 		fieldName := field.Name
 
-		tag := field.Tag.Get(b.getTagName())
-		if tag == "" {
+		tagValue, ok := field.Tag.Lookup(b.getTagKey())
+		if !ok {
 			b.printDebugf("skipping %q because it does not have the %q tag set", fieldName,
-				b.getTagName())
+				b.getTagKey())
 			continue
 		}
 
-		key := getTagKey(tag)
+		envVarName := getTagEnvVarName(tagValue)
 
-		if !setDefault && key == "-" {
-			b.printDebugf("skipping field %q because env var key is set to \"-\"", fieldName)
+		if !setDefault && envVarName == "-" {
+			b.printDebugf("skipping field %q because env var name is set to \"-\"", fieldName)
 			continue
 		}
 
-		defaultVal, defaultAttributeSet := getTagAttribute(tag, tagAttrDefault)
+		defaultVal, defaultAttributeSet := getTagAttribute(tagValue, tagAttrDefault)
 
 		if setDefault && !defaultAttributeSet {
 			continue
 		}
 
-		if key == ">" {
+		if envVarName == ">" {
 			myTyp := value.Field(i).Type()
 			myNew := reflect.New(myTyp)
 			myVal := myNew.Interface()
@@ -343,11 +343,11 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 				indent:            b.indent,
 				ListSeparator:     b.ListSeparator,
 				KeyValueSeparator: b.KeyValueSeparator,
-				TagName:           b.TagName,
+				TagKey:            b.TagKey,
 				Uint8Lists:        b.Uint8Lists,
 			}
 
-			cb.prefix, _ = getTagAttribute(tag, tagAttrPrefix)
+			cb.prefix, _ = getTagAttribute(tagValue, tagAttrPrefix)
 
 			ccfg, err := cb.Build()
 			if err != nil {
@@ -372,14 +372,14 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 			if setDefault {
 				valStr = defaultVal
 			} else {
-				if envVarVal, ok := os.LookupEnv(b.prefix + key); ok {
+				if envVarVal, ok := os.LookupEnv(b.prefix + envVarName); ok {
 					valStr = envVarVal
 				} else {
 					continue
 				}
 			}
 
-			if _, tagFound := getTagAttribute(tag, tagAttrUnmarshalJSON); tagFound {
+			if _, tagFound := getTagAttribute(tagValue, tagAttrUnmarshalJSON); tagFound {
 				fieldVal := value.Field(i)
 				fieldInterface := fieldVal.Addr().Interface()
 				err := json.Unmarshal([]byte(valStr), fieldInterface)
@@ -396,9 +396,9 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 				err := b.setFieldValue(fieldName, value.Field(i), valStr)
 				if err != nil {
 					if setDefault {
-						return fmt.Errorf("error setting default value for %q (%s)", key, err.Error())
+						return fmt.Errorf("error setting default value for %q (%s)", b.prefix+envVarName, err.Error())
 					}
-					return fmt.Errorf("error reading %q (%s)", b.prefix+key, err.Error())
+					return fmt.Errorf("error reading %q (%s)", b.prefix+envVarName, err.Error())
 				}
 				b.printDebugf("set value for field %q", fieldName)
 				if !setDefault {
@@ -776,11 +776,15 @@ func (b *Builder[T]) checkRequired() error {
 	for i := 0; i < typ.NumField(); i++ {
 		field := typ.Field(i)
 		fieldName := field.Name
-		tag := field.Tag.Get(b.getTagName())
-		key := getTagKey(tag)
-		_, required := getTagAttribute(tag, tagAttrRequired)
+		tagValue, ok := field.Tag.Lookup(b.getTagKey())
+		if !ok {
+			continue
+		}
 
-		if key == "-" {
+		envVarName := getTagEnvVarName(tagValue)
+		_, required := getTagAttribute(tagValue, tagAttrRequired)
+
+		if envVarName == "-" {
 			continue
 		}
 		if required && !b.setProps[fieldName] {
@@ -798,12 +802,12 @@ func (b *Builder[T]) checkRequired() error {
 	}
 }
 
-// getTagName returns the user-specified tag name or defaults to "envvar" if none is specified.
-func (b *Builder[T]) getTagName() string {
-	if b.TagName == "" {
-		return DefaultTagName
+// getTagKey returns the user-specified tag name or defaults to "envvar" if none is specified.
+func (b *Builder[T]) getTagKey() string {
+	if b.TagKey == "" {
+		return DefaultTagKey
 	}
-	return b.TagName
+	return b.TagKey
 }
 
 func (b *Builder[T]) printDebugFunctionStart() {
@@ -891,7 +895,7 @@ func parseFloats[T floats](s, sep string, bitsize int) ([]T, error) {
 	return floats, nil
 }
 
-func getTagKey(tagVal string) string {
+func getTagEnvVarName(tagVal string) string {
 	return strings.Split(tagVal, ",")[0]
 }
 
@@ -912,7 +916,7 @@ func getTagAttribute(tagVal string, attributeName tagAttr) (string, bool) {
 
 type TagSyntaxError struct {
 	FieldName string
-	TagName   string
+	TagKey    string
 	TagValue  string
 	msg       string
 }

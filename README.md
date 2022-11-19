@@ -88,53 +88,69 @@ Here are the options that can be set on a Builder:
 |-------------------|---------|------------------------------------------------------------|
 | ListSeparator     | ,       | splits items in a list (slice)                             |
 | KeyValueSeparator | :       | splits keys and values for maps                            |
-| TagName           | envvar  | used to identify the environment variable name for a field |
+| TagKey            | envvar  | used to identify tag values used by cfgbuild for a field   |
 | Uint8Lists        | false   | when set to true it designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4) instead of as a series of bytes |
 
 
 
 ## Tags
 
-### Name
-Tags typically follow the format of 
-```golang
-MyString string `envvar:"ENV_VAR_NAME"`
+Tags are used to mark the fields in a config so that cfgbuild knows how to properly create and initialize a config instance.  Tags follow the format 
 ```
-where `envvar` is a keyword and "ENV_VAR_NAME" is the name of the environment variable containing the value.
-
-### Required
-If a value is required (must be set), the `required` flag can be added.
-```golang
-MyString string `envvar:"ENV_VAR_NAME,required"`
+`TAG_KEY:"TAG_VALUE"`
 ```
-When the required flag is included in the `envvar` tag, the cfgbuild.Builder.Build() function will return an error if the value is not set.
+By default the tag key is `envvar`, but a Builder can be configured to used a different tag key if desired.
 
-### Default
-If there is a default value, it can be set using the `default` flag.
-```golang
-MyNumber int `envvar:"ENV_VAR_NAME,default=1234"`
+The tag value follows the format
 ```
-If the environment variable is not set then the default value specified after the equals sign will be used instead.  There is no compile time validation of the default value so if an integer has something like `default=abc` specified then the cfgbuild.Builder.Build() function will always fail.
-
-### Prefix
-The `prefix` flag is used when a nested Config should have a preflix applied to all environment variable names.
-```golang
-ChildConfig AnotherConfig `,prefix="ANOTHER_"`
+"ENV_VAR_NAME[,ATTRIBUTE_NAME[=ATTRIBUTE_VALUE]]"
 ```
-In the above example, if "AnotherConfig" had field associated with the environment variable `PORT` when when initializing the nested config it would read the environment variable `ANOTHER_PORT`.  Also note that that the tag for a nested Config does not have an environment variable name.
 
-### unmarshalJSON
-The `unmarshalJSON` flag is used when the environment variable is in JSON and that should be unmarshaled into a nested struct.
+For the example below, when cfgbuild creates a new config it will set `MyString` to the value of environment variable **MY_STRING**_.  If **MY_STRING** is not set then `MyString` will be set to the default value "ahoy".
 ```golang
-type Child struct {
-	MyInt int `json:"i"`
-}
-
 type Config struct {
-	Nested Child `envvar:"NESTED_CHILD,unmarshalJSON,default={\"i\":3}"`
+	MyString string `envvar:"MY_STRING,default=ahoy"`
 }
 ```
-In the above example, the default for Nested Child MyInt would be 3 and it would apply any JSON snippet in the `NESTED_CHILD` envirnonment variable on top.
+
+### EnvVarName
+The EnvVarName portion of the tag value specifies the name of the environment variable to be read when setting the tagged field.  In addition, the EnvVarName can be "-" to mean there is no environment variable to be read or ">" to indicate the field is a nested config to be recursively initialized.
+
+### Attributes
+
+- **required**
+	If a value is required (must be set), the `required` flag can be added.
+	```golang
+	MyString string `envvar:"MY_STRING,required"`
+	```
+	In the above example, the cfgbuild.Builder.Build() function will return an error if `MyString` is not set (because the **MY_STRING** environment variable isn't set).  The `required` attribute does not have an attribute value.
+
+- **default**
+	If there is a default value, it can be set using the `default` attribute.
+	```golang
+	MyNumber int `envvar:"MY_NUMBER,default=1234"`
+	```
+	If the environment variable is not set then the default value specified as the attribute value (after the equals sign) will be used instead.  There is no compile time validation of the default value so if an integer has something like `default=abc` specified then the cfgbuild.Builder.Build() function will always fail.
+
+- **prefix**
+	The `prefix` attribute is used when a nested Config should have a preflix applied to all environment variable names.
+	```golang
+	ChildConfig AnotherConfig `envvar:">,prefix=ANOTHER_"`
+	```
+	In the above example, if "AnotherConfig" had field associated with the environment variable `PORT` when when initializing the nested config it would read the environment variable `ANOTHER_PORT`.  Also note that that the tag for a nested Config does not have an environment variable name but instead uses `>`.
+
+- **unmarshalJSON**
+	The `unmarshalJSON` attribute is used when the environment variable is in JSON and that should be unmarshaled into a nested struct.
+	```golang
+	type Child struct {
+		MyInt int `json:"i"`
+	}
+
+	type Config struct {
+		Nested Child `envvar:"NESTED_CHILD,unmarshalJSON,default={\"i\":3}"`
+	}
+	```
+	In the above example, the default for Nested Child MyInt would be 3 and it would apply any JSON snippet in the `NESTED_CHILD` envirnonment variable on top.  The `unmarshalJSON` attribute does not have an attribute value.
 
 ## Functions
 Additional flexibility and customization can be achieved by adding implementations of specific functions to the Config struct.
