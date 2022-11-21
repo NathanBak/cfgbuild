@@ -12,6 +12,16 @@ import (
 )
 
 // This main function shows how to use a Builder to create a config with the values initialized.
+//
+// Expected output:
+//
+// cfg.MyInt = 42
+// cfg.MyFloat = 3.14159
+// cfg.MyDuration = 3s
+// cfg.MyTime = 2000-03-17 00:13:37 +0000 UTC
+// cfg.MyBytes = [115 101 99 114 101 116]
+// cfg.MyString = Nobody expects the Spanish Inquisition!
+// cfg.MyBool = true
 func main() {
 	// create a new config Builder
 	builder := cfgbuild.Builder[*Config]{}
