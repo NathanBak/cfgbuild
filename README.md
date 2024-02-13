@@ -181,3 +181,6 @@ Q - Does cfgbuild support enums?
 <br>
 A - A config can have an enum field if the enum implements the [TextUnmarshaler interface](https://pkg.go.dev/encoding#TextUnmarshaler).  See the [Color](examples/enumparse/color.go) enum for an example.
 
+Q - How doce cfgbuild compare with [caarlos0/env](https://github.com/caarlos0/env)?
+<br>
+A - Although caarlos0/env was written first, cfgbuild was developed independently.  There is a high degree of overlap between basic functionality, but there seem to be difference when it comes to more complex use cases.  For example, caarlos0/env supports reading values from files and cfgbuild supports nested structs.
