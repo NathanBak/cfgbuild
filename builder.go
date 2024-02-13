@@ -33,6 +33,7 @@ import (
 	"errors"
 	"fmt"
 	"math/bits"
+	"net/url"
 	"os"
 	"reflect"
 	"runtime"
@@ -472,6 +473,13 @@ func (b *Builder[T]) setFieldValue(fieldName string, v reflect.Value, s string) 
 		}
 		v.SetInt(int64(i))
 
+	case reflect.TypeOf(url.URL{}): // URL
+		u, err := url.Parse(s)
+		if err != nil {
+			return err
+		}
+		v.Set(reflect.ValueOf(*u))
+
 	case reflect.TypeOf([]string{}):
 		vals := split(s, sep)
 		v.Set(reflect.ValueOf(vals))
@@ -744,6 +752,13 @@ func (b *Builder[T]) setFieldValue(fieldName string, v reflect.Value, s string) 
 				}
 				d := time.Duration(i)
 				v.Set(reflect.ValueOf(&d))
+
+			case "*url.URL":
+				u, err := url.Parse(s)
+				if err != nil {
+					return err
+				}
+				v.Set(reflect.ValueOf(u))
 
 			case "*string":
 				str := s
