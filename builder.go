@@ -1,7 +1,7 @@
 /*
 BSD 2-Clause License
 
-Copyright (c) 2022, Nathan Bak
+Copyright (c) 2024, Nathan Bak
 All rights reserved.
 
 Redistribution and use in source and binary forms, with or without
@@ -81,6 +81,11 @@ type Builder[T interface{}] struct {
 	// Uint8Lists designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4).  The
 	// default is false meaning that value will be treated as a series of bytes.
 	Uint8Lists bool
+	// PrefixFallback can be set to true to allow use by the parent value if the child value is not
+	// set.  For example, if a field has a name of KEY and a prefix of "PREFIX_" it will typically
+	// just look for "PREFIX_KEY", but if PrefixFallback is set to true and there is no "PREFIX_KEY"
+	// environment variable than it will fall back to "KEY".
+	PrefixFallback bool
 }
 
 type initInterface interface {
@@ -345,6 +350,7 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 				KeyValueSeparator: b.KeyValueSeparator,
 				TagKey:            b.TagKey,
 				Uint8Lists:        b.Uint8Lists,
+				PrefixFallback:    b.PrefixFallback,
 			}
 
 			cb.prefix, _ = getTagAttribute(tagValue, tagAttrPrefix)
@@ -373,6 +379,8 @@ func (b *Builder[T]) fieldLoop(setDefault bool) error {
 				valStr = defaultVal
 			} else {
 				if envVarVal, ok := os.LookupEnv(b.prefix + envVarName); ok {
+					valStr = envVarVal
+				} else if envVarVal, ok := os.LookupEnv(envVarName); b.PrefixFallback && ok {
 					valStr = envVarVal
 				} else {
 					continue
@@ -518,7 +526,7 @@ func (b *Builder[T]) setFieldValue(fieldName string, v reflect.Value, s string) 
 			}
 			v.Set(reflect.ValueOf(vals))
 		} else {
-			// be default we assume []uint8 to actually be []byte
+			// by default we assume []uint8 to actually be []byte
 			v.Set(reflect.ValueOf([]uint8(s)))
 		}
 

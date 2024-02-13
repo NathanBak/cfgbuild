@@ -90,6 +90,7 @@ Here are the options that can be set on a Builder:
 | KeyValueSeparator | :       | splits keys and values for maps                            |
 | TagKey            | envvar  | used to identify tag values used by cfgbuild for a field   |
 | Uint8Lists        | false   | when set to true it designates that []uint8 and []byte should be treated as a list (ie 1,2,3,4) instead of as a series of bytes |
+| PrefixFallback    | false   | when set to true lookups will first try "PREFIX_name" and if there isn't any environment variable with "PREFIX_name" it will fall back to just "name" |
 
 
 
