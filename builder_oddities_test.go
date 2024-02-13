@@ -3,6 +3,7 @@ package cfgbuild
 import (
 	"fmt"
 	"net"
+	"net/url"
 	"os"
 	"testing"
 	"time"
@@ -41,6 +42,9 @@ type TestOddConfig struct {
 
 	// time.Time implements the encoding.TextUnmarshaler interface
 	MyTime time.Time `envvar:"-,default=2000-03-17T13:37:00Z"`
+
+	MyURL        url.URL  `envvar:"MY_URL"`
+	MyURLPointer *url.URL `envvar:"MY_URL_POINTER"`
 }
 
 type TestNestedConfig struct {
@@ -74,4 +78,23 @@ func TestOddities(t *testing.T) {
 	assert.Equal(t, 17, cfg.MyTime.Local().Day())
 	assert.Equal(t, time.March, cfg.MyTime.Local().Month())
 	assert.Equal(t, 2000, cfg.MyTime.Local().Year())
+}
+
+func TestURL(t *testing.T) {
+	os.Setenv("MY_URL", "https://www.nathanbak.com/?p=744")
+	os.Setenv("MY_URL_POINTER", "https://www.nathanbak.com/?p=711")
+
+	b := Builder[*TestOddConfig]{debug: true}
+	cfg, err := b.Build()
+	assert.NoError(t, err)
+
+	expected1, err := url.Parse("https://www.nathanbak.com/?p=744")
+	assert.NoError(t, err)
+
+	expected2, err := url.Parse("https://www.nathanbak.com/?p=711")
+	assert.NoError(t, err)
+
+	assert.Equal(t, *expected1, cfg.MyURL)
+	assert.Equal(t, expected2, cfg.MyURLPointer)
+
 }
